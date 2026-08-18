@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>공문 일정 비서</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="공문일정">
+<script>
+  if ('serviceWorker' in navigator)
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+
 <style>
   :root{
     --bg:#f4f6f9; --panel:#ffffff; --line:#dbe1ea; --ink:#1f2937; --sub:#6b7280;
@@ -177,6 +189,8 @@
            padding:9px 13px;border-radius:9px;margin-bottom:12px}
   .syncbar.on{background:var(--ok-soft);color:var(--ok)}
   .syncbar.off{background:var(--warn-soft);color:#7c4a09}
+  .syncbar.tip{background:var(--brand-soft);color:var(--brand)}
+  .syncbar .x{margin-left:auto;background:transparent;color:inherit;padding:2px 8px;font-size:16px;line-height:1}
   .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 20px;border-radius:99px;font-weight:600;font-size:13.5px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.25)}
   .toast[hidden]{display:none}
 
@@ -217,6 +231,7 @@
 </header>
 
 <div class="wrap">
+  <div id="installBar" hidden></div>
   <div id="syncBar" hidden></div>
   <div class="tabs">
     <button class="tab active" data-tab="in">① 공문 붙여넣기</button>
@@ -2493,6 +2508,21 @@ function watchStore(){
   }).observe(el, { childList:true, subtree:true, attributes:true });
 }
 
+/* 폰에서 홈 화면에 추가하면 앱처럼 열린다 — 처음 한 번만 알려준다 */
+function installBar(){
+  const el = document.getElementById('installBar');
+  if (!el) return;
+  const standalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone;
+  const phone = window.matchMedia('(max-width:720px)').matches;
+  if (standalone || !phone || localStorage.getItem('gongmun-tip-install')){ el.hidden = true; return; }
+  const ios = /iPhone|iPad|iPod/.test(navigator.userAgent);
+  el.hidden = false;
+  el.className = 'syncbar tip';
+  el.innerHTML = '📱 <b>홈 화면에 추가</b>해두면 아이콘을 눌러 바로 열립니다 — '
+    + (ios ? '아래 <b>공유 버튼</b> → 「홈 화면에 추가」' : '오른쪽 위 <b>⋮ 메뉴</b> → 「홈 화면에 추가」')
+    + '<button class="x" onclick="localStorage.setItem(\'gongmun-tip-install\',\'1\');installBar()">✕</button>';
+}
+
 function syncBar(){
   const el = document.getElementById('syncBar');
   if (!el) return;
@@ -2514,6 +2544,7 @@ function syncBar(){
     watchStore();
   }
   syncBar();
+  installBar();
   renderAll();
 })();
 </script>

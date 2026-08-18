@@ -4,6 +4,18 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>공문 일정 비서</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#1d4ed8">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="공문일정">
+<script>
+  if ('serviceWorker' in navigator)
+    window.addEventListener('load', () => navigator.serviceWorker.register('sw.js').catch(()=>{}));
+</script>
+
 <meta name="description" content="공문·메일·한글·PDF·엑셀에서 일정을 뽑아 담고, 취합 건은 회신기한까지 계산해 주는 서무용 도구">
 <style>
   :root{
@@ -121,8 +133,8 @@
         <h2>폰에서 쓰려면</h2>
         <ol class="steps">
           <li><b>바로 사용하기</b>를 누릅니다</li>
-          <li>브라우저 메뉴에서 <b>홈 화면에 추가</b></li>
-          <li>아이콘이 생겨 앱처럼 열립니다</li>
+          <li>아이폰은 <b>공유 버튼</b>, 안드로이드는 <b>⋮ 메뉴</b> → <b>홈 화면에 추가</b></li>
+          <li>바탕화면에 아이콘이 생깁니다. <b>누르면 바로 이 프로그램이 열립니다</b> — 주소창도 없고, 인터넷이 끊겨도 열립니다</li>
         </ol>
         <p style="font-size:13.8px;color:var(--sub);margin:16px 0 0">
           입력칸을 <b>길게 눌러 「텍스트 스캔」</b>을 쓰면 카메라로 공문을 비추는 것만으로 글자가 들어옵니다.</p>
