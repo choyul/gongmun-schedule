@@ -1,0 +1,2521 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>공문 일정 비서</title>
+<style>
+  :root{
+    --bg:#f4f6f9; --panel:#ffffff; --line:#dbe1ea; --ink:#1f2937; --sub:#6b7280;
+    --brand:#1d4ed8; --brand-soft:#eaf0ff; --ok:#0f7b3f; --ok-soft:#e7f6ec;
+    --warn:#b45309; --warn-soft:#fdf3e3; --danger:#b91c1c; --danger-soft:#fdeaea;
+    --c-회의:#1d4ed8;    --c-회의-s:#eaf0ff;
+    --c-교육:#7c3aed;    --c-교육-s:#f2ecfe;
+    --c-행사:#0f7b3f;    --c-행사-s:#e7f6ec;
+    --c-출장점검:#b45309; --c-출장점검-s:#fdf3e3;
+    --c-제출마감:#b91c1c; --c-제출마감-s:#fdeaea;
+    --c-보고:#0e7490;    --c-보고-s:#e4f3f6;
+    --c-기타:#6b7280;    --c-기타-s:#eef1f6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;font-family:-apple-system,BlinkMacSystemFont,"Malgun Gothic","맑은 고딕","Apple SD Gothic Neo",sans-serif;background:var(--bg);color:var(--ink);font-size:14px;line-height:1.5}
+  header{background:var(--brand);color:#fff;padding:12px 20px;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+  header h1{font-size:18px;margin:0;font-weight:700}
+  header .desc{font-size:12px;opacity:.85}
+  header button{background:rgba(255,255,255,.16);color:#fff;border:1px solid rgba(255,255,255,.35)}
+  header button:hover{background:rgba(255,255,255,.28)}
+  .wrap{max-width:1180px;margin:0 auto;padding:16px}
+  .tabs{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:14px}
+  .tab{padding:9px 16px;border:1px solid var(--line);background:#fff;border-radius:8px;cursor:pointer;font-weight:600;color:var(--sub)}
+  .tab.active{background:var(--brand);color:#fff;border-color:var(--brand)}
+  .panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:18px;margin-bottom:16px}
+  .panel h2{margin:0 0 4px;font-size:16px}
+  .panel .hint{color:var(--sub);font-size:12.5px;margin:0 0 14px}
+  .row{display:flex;gap:12px;flex-wrap:wrap;align-items:flex-end}
+  .field{display:flex;flex-direction:column;gap:4px}
+  .field label{font-size:12px;color:var(--sub);font-weight:600}
+  input,select,button,textarea{font-family:inherit;font-size:14px}
+  input,select,textarea{padding:8px 10px;border:1px solid var(--line);border-radius:8px;background:#fff;color:var(--ink)}
+  input:focus,select:focus,textarea:focus{outline:2px solid var(--brand-soft);border-color:var(--brand)}
+  textarea{width:100%;min-height:210px;line-height:1.6;resize:vertical}
+  button{cursor:pointer;border:none;border-radius:8px;padding:9px 16px;font-weight:600;background:#eef1f6;color:var(--ink)}
+  button.primary{background:var(--brand);color:#fff}
+  button.ok{background:var(--ok);color:#fff}
+  button.danger{background:var(--danger);color:#fff}
+  button.ghost{background:#fff;border:1px solid var(--line)}
+  button.sm{padding:5px 10px;font-size:12.5px}
+
+  /* 구분(내 업무 / 취합) */
+  .kind{display:inline-block;padding:2px 9px;border-radius:6px;font-size:11.5px;font-weight:700;white-space:nowrap}
+  .kind.mine{background:#e7f6ec;color:#0f7b3f}
+  .kind.collect{background:#fdf3e3;color:#b45309}
+  .cat{display:inline-block;padding:2px 9px;border-radius:99px;font-size:11.5px;font-weight:700;white-space:nowrap}
+
+  /* 입력 - 드롭존 / 이미지 */
+  .drop{border:2px dashed var(--line);border-radius:12px;padding:18px;text-align:center;color:var(--sub);
+        background:#fbfcfd;margin-bottom:12px;transition:.15s;cursor:pointer}
+  .drop.on{border-color:var(--brand);background:var(--brand-soft);color:var(--brand)}
+  .drop b{color:var(--ink)}
+  .srcbadge{display:inline-block;margin-bottom:10px;padding:4px 12px;border-radius:99px;font-size:12.5px;
+            font-weight:700;background:var(--brand-soft);color:var(--brand)}
+  .imgbox{border:1px solid var(--line);border-radius:10px;padding:10px;margin-bottom:12px;background:#fff}
+  .imgbox img{max-width:100%;border-radius:6px;display:block;cursor:zoom-in}
+  .imgbox .cap{font-size:12.5px;color:var(--sub);margin-bottom:8px;display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+  .warnbox{background:var(--warn-soft);border:1px solid #f0dcb4;color:#7c4a09;border-radius:9px;
+           padding:10px 13px;font-size:12.8px;margin-bottom:12px;line-height:1.6}
+
+  /* 큰 입력 버튼 (폰에서 엄지로 누르기 좋게) */
+  .grabs{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin-bottom:12px}
+  .grab{padding:16px 10px;font-size:15px;background:#fff;border:1px solid var(--line);
+        border-radius:11px;font-weight:700;line-height:1.4}
+  .grab:hover{border-color:var(--brand);color:var(--brand)}
+  .grab small{display:block;font-size:11.5px;font-weight:500;color:var(--sub);margin-top:3px}
+
+  /* 유형 고르기 */
+  .chips{display:flex;gap:6px;flex-wrap:wrap;margin-bottom:12px}
+  .chip{padding:7px 14px;border:1px solid var(--line);background:#fff;border-radius:99px;
+        font-size:13px;font-weight:600;color:var(--sub);cursor:pointer}
+  .chip.on{background:var(--brand);border-color:var(--brand);color:#fff}
+
+  /* 좁은 화면용 카드 */
+  .elist{display:flex;flex-direction:column;gap:9px}
+  .ecard{border:1px solid var(--line);border-left:4px solid var(--line);border-radius:10px;
+         padding:11px 13px;background:#fff}
+  .ecard.done{opacity:.5}
+  .ecard .top{display:flex;align-items:center;gap:7px;flex-wrap:wrap;margin-bottom:5px}
+  .ecard .when{font-weight:700}
+  .ecard h4{margin:2px 0 6px;font-size:15px;line-height:1.4;word-break:keep-all}
+  .ecard .meta{font-size:12.3px;color:var(--sub);line-height:1.6}
+  .ecard .acts{display:flex;gap:6px;flex-wrap:wrap;margin-top:9px}
+  .ecard .acts button{flex:1 1 auto;min-width:88px;padding:9px 12px;font-size:12.5px;background:#f3f5f8}
+  .ecard .acts button.cal{background:var(--brand-soft);color:var(--brand)}
+  .ecard .acts button.shr{background:var(--ok-soft);color:var(--ok)}
+
+  /* 추출 결과 — 확인만 하고 등록하는 한 줄 요약 */
+  .cards{display:flex;flex-direction:column;gap:6px}
+  .pick{display:flex;align-items:flex-start;gap:10px;border:1px solid var(--line);border-radius:10px;
+        padding:10px 12px;background:#fff;cursor:pointer}
+  .pick:hover{border-color:var(--brand);background:#fcfdff}
+  .pick.off{opacity:.42;background:#fafbfc}
+  .pick input[type=checkbox]{width:18px;height:18px;cursor:pointer;margin-top:2px;flex:none}
+  .pick .pmain{flex:1;min-width:0}
+  .pick .p1{display:flex;align-items:center;gap:7px;flex-wrap:wrap}
+  .pick .pdate{font-weight:700;white-space:nowrap}
+  .pick .ptitle{font-weight:600;word-break:keep-all}
+  .pick .p2{font-size:12.3px;color:var(--sub);margin-top:3px}
+  .pick .p2 .due{color:var(--warn);font-weight:700}
+  .pick .fix{flex:none;align-self:center}
+
+  /* 등록 버튼 — 목록이 길어도 화면 아래에 계속 붙어 있는다 */
+  .commitbar{position:sticky;bottom:0;display:flex;align-items:center;gap:8px;flex-wrap:wrap;
+             margin:14px -18px -18px;padding:12px 18px;background:rgba(255,255,255,.96);
+             border-top:1px solid var(--line);border-radius:0 0 12px 12px;
+             backdrop-filter:blur(4px);z-index:5}
+  button.big{padding:12px 26px;font-size:15px}
+
+  /* 제출처 요약줄 */
+  .cbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;background:#fbfcfd;border:1px solid var(--line);
+        border-radius:9px;padding:9px 12px;margin-bottom:12px;font-size:13px}
+  .cbar .lbl{color:var(--sub);font-size:12px;font-weight:700}
+
+  /* 2지 선택 토글 */
+  .seg{display:flex;border:1px solid var(--line);border-radius:9px;overflow:hidden}
+  .seg button{flex:1;border-radius:0;background:#fff;color:var(--sub);padding:10px 8px;font-size:13.5px}
+  .seg button+button{border-left:1px solid var(--line)}
+  .seg button.on{background:var(--brand);color:#fff}
+  .opt{font-weight:400;color:var(--sub)}
+  details.more{margin-bottom:10px}
+  details.more summary{cursor:pointer;font-size:12.5px;color:var(--sub);font-weight:600;padding:6px 0;user-select:none}
+
+  /* 캘린더 */
+  .calbar{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:12px}
+  .calbar h2{margin:0;font-size:19px;min-width:150px}
+  .cal{width:100%;border-collapse:collapse;table-layout:fixed}
+  .cal th{background:#eef1f6;border:1px solid var(--line);padding:7px 0;font-size:12.5px;color:var(--sub)}
+  .cal th.sun{color:var(--danger)} .cal th.sat{color:var(--brand)}
+  .cal td{border:1px solid var(--line);vertical-align:top;height:130px;padding:4px;background:#fff}
+  .cal td.other{background:#fafbfc}
+  .cal td.today{background:#fffdf2;box-shadow:inset 0 0 0 2px var(--warn)}
+  .dnum{font-size:12px;font-weight:700;color:var(--sub);margin-bottom:3px}
+  .dnum.sun{color:var(--danger)} .dnum.sat{color:var(--brand)}
+  /* 제목이 잘리지 않게 두 줄까지 펼쳐 보인다 */
+  .ev{display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;
+      width:100%;text-align:left;font-size:11.5px;line-height:1.35;padding:4px 6px;border-radius:5px;
+      margin-bottom:3px;border:1px solid transparent;cursor:pointer;font-weight:600;
+      overflow:hidden;white-space:normal;word-break:keep-all;overflow-wrap:break-word;max-height:3.3em}
+  .ev .t{font-weight:700;opacity:.75;margin-right:3px}
+  .ev.due{background:#fff!important;border:1px dashed var(--warn);color:var(--warn)!important}
+  .ev.done{text-decoration:line-through;opacity:.45}
+  .legend{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px;align-items:center}
+
+  /* 목록 */
+  .tblwrap{overflow-x:auto}
+  table.list{width:100%;min-width:900px;border-collapse:collapse}
+  table.list th,table.list td{border-bottom:1px solid var(--line);padding:8px;text-align:left;font-size:13.2px;vertical-align:top}
+  table.list th{background:#f7f9fb;font-size:12px;color:var(--sub);white-space:nowrap}
+  table.list tr.done td{opacity:.45}
+  table.list tr.done td b{text-decoration:line-through}
+  .dday{font-weight:700;font-size:12px;white-space:nowrap}
+  .dday.soon{color:var(--danger)} .dday.near{color:var(--warn)} .dday.past{color:var(--sub)}
+  .empty{padding:34px 10px;text-align:center;color:var(--sub)}
+  .pchip{display:inline-block;margin:2px 3px 0 0;padding:2px 8px;border-radius:99px;font-size:11.5px;font-weight:600;cursor:pointer;border:1px solid var(--line);background:#fff;color:var(--sub)}
+  .pchip.ok{background:var(--ok-soft);border-color:#b6dfc4;color:var(--ok);text-decoration:line-through}
+  .prog{font-weight:700;font-size:12px;white-space:nowrap}
+  .prog.full{color:var(--ok)}
+
+  /* 모달 */
+  .mask{position:fixed;inset:0;background:rgba(17,24,39,.45);display:flex;align-items:center;justify-content:center;padding:16px;z-index:50}
+  .mask[hidden]{display:none}
+  .modal{background:#fff;border-radius:12px;padding:20px;width:min(560px,100%);max-height:90vh;overflow:auto}
+  .modal h3{margin:0 0 14px;font-size:16px}
+  .modal .field{margin-bottom:10px}
+  .modal input,.modal select,.modal textarea{width:100%}
+  .modal textarea{min-height:56px}
+  .box{border:1px solid var(--line);border-radius:9px;padding:10px 12px;margin-bottom:10px;background:#fbfcfd}
+  .box h4{margin:0 0 7px;font-size:12.5px;color:var(--sub)}
+  .syncbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;font-size:12.5px;font-weight:600;
+           padding:9px 13px;border-radius:9px;margin-bottom:12px}
+  .syncbar.on{background:var(--ok-soft);color:var(--ok)}
+  .syncbar.off{background:var(--warn-soft);color:#7c4a09}
+  .toast{position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#111827;color:#fff;padding:10px 20px;border-radius:99px;font-weight:600;font-size:13.5px;z-index:99;box-shadow:0 6px 20px rgba(0,0,0,.25)}
+  .toast[hidden]{display:none}
+
+  @media (max-width:720px){
+    header{padding:10px 13px} header h1{font-size:16px} header .desc{display:none}
+    .wrap{padding:11px}
+    .tab{padding:9px 12px;font-size:13.5px;flex:1;text-align:center;min-width:44%}
+    .panel{padding:14px}
+    .cal td{height:auto;min-height:74px;padding:3px}
+    .cal th{font-size:11px}
+    .ev{font-size:10.8px;-webkit-line-clamp:3;max-height:4.6em}
+    .dnum{font-size:11px}
+    .modal{width:100%;max-height:94vh}
+    .row .field{min-width:0}
+    .grabs{grid-template-columns:1fr}
+    textarea{min-height:150px}
+  }
+
+  @media print{
+    header,.tabs,.noprint,.calbar button{display:none!important}
+    body{background:#fff} .wrap{max-width:none;padding:0}
+    .panel{border:none;padding:0;margin-bottom:10px}
+    .cal td{height:auto;min-height:70px}
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>공문 일정 비서</h1>
+  <span class="desc">공문·메일 본문 → 일정 자동 추출 · 취합 건은 회신기한 자동 계산 · 오프라인 전용</span>
+  <span style="flex:1"></span>
+  <button class="sm" onclick="exportJSON()">백업 저장</button>
+  <button class="sm" onclick="document.getElementById('fileEl').click()">백업 불러오기</button>
+  <button class="sm" onclick="exportICS()">ICS 내보내기</button>
+  <button class="sm" onclick="window.print()">인쇄</button>
+  <input type="file" id="fileEl" accept=".json" hidden onchange="importJSON(this)">
+</header>
+
+<div class="wrap">
+  <div id="syncBar" hidden></div>
+  <div class="tabs">
+    <button class="tab active" data-tab="in">① 공문 붙여넣기</button>
+    <button class="tab" data-tab="cal">② 일정표</button>
+    <button class="tab" data-tab="list">③ 전체 목록</button>
+    <button class="tab" data-tab="set">④ 명단·설정</button>
+  </div>
+
+  <!-- ───────── ① 입력 ───────── -->
+  <section id="tab-in">
+    <div class="panel">
+      <h2>아무 형식이나 넣으세요</h2>
+      <p class="hint">한글·워드 공문, 메일 본문, 엑셀 표, 메모장 — 무엇이든 <b>복사해서 붙여넣거나(Ctrl+V)</b> 아래에 <b>파일을 끌어다 놓으면</b> 됩니다. 표는 표대로, 줄글은 줄글대로 알아서 읽습니다. <b>제출·마감·보고</b>로 잡힌 건은 팀원에게 받아야 하는 <b>취합</b>으로 설정되어, 마감일보다 앞선 회신기한이 함께 만들어집니다.</p>
+
+      <div class="grabs">
+        <button class="grab" onclick="document.getElementById('camIn').click()">📷 사진으로 담기
+          <small>공문을 찍거나 앨범에서 고르기</small></button>
+        <button class="grab" onclick="document.getElementById('anyFile').click()">📄 파일로 담기
+          <small>한글 · PDF · 엑셀</small></button>
+      </div>
+      <input type="file" id="camIn" hidden accept="image/*" capture="environment"
+             onchange="handleFiles(this.files);this.value=''">
+
+      <div class="drop" id="drop" onclick="document.getElementById('anyFile').click()">
+        📄 여기에 <b>파일을 끌어다 놓거나</b> 클릭해서 고르세요
+        <div style="font-size:12px;margin-top:5px">한글(.hwp·.hwpx) · PDF · 엑셀(.xlsx) · CSV · 텍스트 · 사진</div>
+      </div>
+      <input type="file" id="anyFile" hidden accept=".hwp,.hwpx,.pdf,.xlsx,.xlsm,.xls,.csv,.tsv,.txt,.md,image/*" onchange="handleFiles(this.files);this.value=''">
+
+      <div id="imgWrap"></div>
+      <div id="srcInfo"></div>
+      <textarea id="raw" placeholder="여기에 붙여넣으세요 (Ctrl+V) — 붙여넣는 순간 바로 읽습니다&#10;&#10;· 한글 공문 → Ctrl+A, Ctrl+C 후 붙여넣기&#10;· 엑셀 → 표 범위를 드래그해 복사 후 붙여넣기&#10;· 메일 → 본문 긁어서 붙여넣기"></textarea>
+      <div class="row" style="margin-top:10px">
+        <button class="ghost sm" onclick="loadSample()">예시로 해보기</button>
+        <button class="ghost sm" onclick="document.getElementById('raw').value='';document.getElementById('imgWrap').innerHTML='';setSrcInfo('');PICKED=[];renderPicked()">지우기</button>
+        <span style="flex:1"></span>
+        <button class="ghost sm" onclick="runParse()">다시 읽기</button>
+      </div>
+    </div>
+
+    <div class="panel" id="resultPanel" hidden>
+      <h2>이대로 등록할까요? <span id="pickCount" style="color:var(--sub);font-weight:400;font-size:13px"></span></h2>
+      <p class="hint">빠진 것·틀린 것만 손보시면 됩니다. 필요 없는 줄은 체크를 끄고, 내용을 바꾸려면 <b>고치기</b>를 누르세요.</p>
+      <div class="cbar" id="contactBar"></div>
+      <div class="cards" id="picked"></div>
+      <div class="commitbar">
+        <button class="ghost sm" onclick="toggleAll(true)">전체 선택</button>
+        <button class="ghost sm" onclick="toggleAll(false)">전체 해제</button>
+        <span style="flex:1"></span>
+        <button class="ok big" id="commitBtn" onclick="commitPicked()">일정표에 등록 →</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- ───────── ② 일정표 ───────── -->
+  <section id="tab-cal" hidden>
+    <div class="panel">
+      <div class="calbar">
+        <button class="ghost sm" onclick="moveMonth(-1)">◀ 이전</button>
+        <h2 id="calTitle"></h2>
+        <button class="ghost sm" onclick="moveMonth(1)">다음 ▶</button>
+        <button class="ghost sm" onclick="goToday()">오늘</button>
+        <span style="flex:1"></span>
+        <button class="primary sm noprint" onclick="openEdit(null)">+ 직접 추가</button>
+      </div>
+      <table class="cal"><thead><tr>
+        <th class="sun">일</th><th>월</th><th>화</th><th>수</th><th>목</th><th>금</th><th class="sat">토</th>
+      </tr></thead><tbody id="calBody"></tbody></table>
+      <div class="legend">
+        <span class="ev due" style="display:inline-block;width:auto;margin:0">점선 = 취합 회신기한</span>
+        <span id="legend"></span>
+      </div>
+    </div>
+
+    <div class="panel">
+      <h2>할 일 타임라인 <span style="color:var(--sub);font-weight:400;font-size:13px">(오늘부터 30일 · 회신기한 포함)</span></h2>
+      <div id="upcoming"></div>
+    </div>
+  </section>
+
+  <!-- ───────── ③ 목록 ───────── -->
+  <section id="tab-list" hidden>
+    <div class="panel">
+      <h2>전체 대장</h2>
+      <p class="hint">등록한 <b>모든</b> 일정이 여기 남습니다. 지난 일정을 되짚거나, 담당자·전화번호로 찾거나, 완료 표시를 정리할 때 씁니다.</p>
+      <div class="row noprint" style="margin-bottom:14px">
+        <div class="field"><label>검색</label><input id="q" placeholder="제목·장소·문서명" oninput="renderList()" style="width:190px"></div>
+        <div class="field"><label>표시</label><select id="fState" onchange="renderList()">
+          <option value="future">예정된 일정만</option><option value="all">전체</option><option value="past">지난 일정</option>
+        </select></div>
+        <span style="flex:1"></span>
+        <button class="primary sm" onclick="openEdit(null)">+ 직접 추가</button>
+        <button class="ghost sm" onclick="clearDone()">완료 항목 정리</button>
+      </div>
+      <div class="chips" id="typeChips"></div>
+      <div class="row noprint" style="margin-bottom:12px">
+        <button class="ghost sm" onclick="shareCurrent()">📤 지금 보이는 일정 공유</button>
+        <span id="listCount" style="color:var(--sub);font-size:12.5px;align-self:center"></span>
+      </div>
+      <div id="listWrap"></div>
+    </div>
+  </section>
+
+  <!-- ───────── ④ 설정 ───────── -->
+  <section id="tab-set" hidden>
+    <div class="panel">
+      <h2>취합 대상 명단</h2>
+      <p class="hint">
+        <b>팀 단위로 받는다면</b> <code>팀이름: 사람1, 사람2</code> 형식으로 한 줄에 한 팀씩 적으세요.
+        팀별 제출이 기본이 되어 챙길 대상이 팀 수만큼으로 줄어듭니다.<br>
+        <b>개인별로 다 받아야 한다면</b> 이름만 한 줄에 한 명씩 적으셔도 됩니다. 두 방식은 일정마다 바꿔 고를 수 있습니다.
+      </p>
+      <textarea id="rosterTxt" style="min-height:150px" placeholder="도시계획팀: 김철수, 이영희&#10;도시재생팀: 박민수, 최지훈&#10;건축팀: 정수연"></textarea>
+      <div id="rosterInfo" style="font-size:12.5px;color:var(--sub);margin-top:7px"></div>
+      <div class="row" style="margin-top:12px">
+        <div class="field">
+          <label>회신기한 = 마감일 <b>며칠 전</b></label>
+          <input type="number" id="leadDefault" min="0" max="14" style="width:90px">
+        </div>
+        <div class="field">
+          <label>&nbsp;</label>
+          <label style="font-weight:400;font-size:12.5px;color:var(--sub);display:flex;align-items:center;gap:6px;height:36px">
+            <input type="checkbox" id="skipWeekend" style="width:16px;height:16px"> 회신기한이 주말이면 앞 평일로 당기기
+          </label>
+        </div>
+        <button class="primary" onclick="saveRoster()">설정 저장</button>
+      </div>
+    </div>
+    <div class="panel">
+      <h2>다른 기기에서도 보려면</h2>
+      <p class="hint">일정은 이 기기에만 저장됩니다. 서버에 올리지 않으니 <b>남이 볼 일이 없습니다.</b></p>
+      <div id="syncPanel"></div>
+    </div>
+
+    <div class="panel">
+      <h2>데이터 관리</h2>
+      <p class="hint">동기화를 켜두면 폰과 PC가 알아서 맞춰집니다. 그래도 <b>백업 저장</b>은 한 번씩 해두세요 — 파일로 남겨두면 무슨 일이 있어도 되살릴 수 있습니다.</p>
+      <div class="row">
+        <button class="ghost" onclick="exportJSON()">백업 저장(JSON)</button>
+        <button class="ghost" onclick="document.getElementById('fileEl').click()">백업 불러오기</button>
+        <button class="danger" onclick="wipeAll()">전체 일정 삭제</button>
+      </div>
+      <p class="hint" style="margin:12px 0 0">현재 저장된 일정: <b id="dbCount"></b>건</p>
+    </div>
+  </section>
+</div>
+
+<!-- 편집 모달 -->
+<div class="mask" id="mask" hidden>
+  <div class="modal">
+    <h3 id="mTitle">일정 수정</h3>
+    <div class="field"><label>무슨 일인가요</label><input id="m_title"></div>
+    <div class="row">
+      <div class="field" style="flex:1.3"><label id="m_startLbl">날짜</label>
+        <input type="date" id="m_start" onchange="syncModalKind()"></div>
+      <div class="field" style="flex:1"><label>시각 <span class="opt">비우면 종일</span></label>
+        <input type="time" id="m_time"></div>
+    </div>
+    <div class="field">
+      <label>이건 누가 하는 일인가요</label>
+      <div class="seg">
+        <button type="button" id="kb_mine" onclick="setKind('mine')">내가 처리</button>
+        <button type="button" id="kb_collect" onclick="setKind('collect')">남에게 받아야 함</button>
+      </div>
+    </div>
+    <div class="box" id="collectBox">
+      <h4>받는 일정 <span style="font-weight:400">— 마감보다 앞당겨 챙깁니다</span></h4>
+      <div class="row" style="margin-bottom:9px;align-items:center">
+        <div class="field" style="width:118px"><label>며칠 전까지</label>
+          <input type="number" id="m_lead" min="0" max="14" onchange="syncModalKind()"></div>
+        <div style="font-weight:700;color:var(--warn);padding-top:16px" id="m_dueTxt"></div>
+      </div>
+      <h4>누구한테 받나요</h4>
+      <div class="seg" id="unitSeg" style="margin-bottom:8px">
+        <button type="button" id="ub_team" onclick="setUnit('team')">팀별로 받기</button>
+        <button type="button" id="ub_person" onclick="setUnit('person')">개인별로 받기</button>
+      </div>
+      <div style="margin-bottom:7px">
+        <button class="ghost sm" onclick="pickAllPeople(true)">전체 선택</button>
+        <button class="ghost sm" onclick="pickAllPeople(false)">전체 해제</button>
+        <span class="opt" style="font-size:12px"> — 이름을 눌러 넣고 뺍니다</span>
+      </div>
+      <div id="m_people"></div>
+    </div>
+    <div class="box">
+      <h4>어디에 내나요 <span style="font-weight:400">— 공문 보낸 쪽 연락처</span></h4>
+      <div class="row">
+        <div class="field" style="flex:1.3;min-width:130px"><label>부서</label><input id="m_cOrg"></div>
+        <div class="field" style="flex:.7;min-width:80px"><label>담당자</label><input id="m_cName"></div>
+        <div class="field" style="flex:1;min-width:120px"><label>전화</label><input id="m_cTel"></div>
+      </div>
+    </div>
+    <details class="more">
+      <summary>자세히 — 분류·장소·여러 날 일정·메모</summary>
+      <div class="row" style="margin-top:8px">
+        <div class="field" style="flex:1"><label>분류 <span class="opt">달력 색상</span></label><select id="m_cat"></select></div>
+        <div class="field" style="flex:1"><label>장소</label><input id="m_place"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field" style="flex:1"><label>종료일 <span class="opt">여러 날이면</span></label><input type="date" id="m_end"></div>
+        <div class="field" style="flex:1"><label>종료시각</label><input type="time" id="m_etime"></div>
+      </div>
+      <div class="row" style="margin-top:8px">
+        <div class="field" style="flex:1"><label>관련 문서</label><input id="m_doc"></div>
+        <div class="field" style="flex:1"><label>이메일</label><input id="m_cEmail"></div>
+      </div>
+      <div class="field" style="margin-top:8px"><label>메모</label><textarea id="m_memo"></textarea></div>
+    </details>
+    <div class="row" style="margin-top:14px">
+      <button class="primary" onclick="saveEdit()">저장</button>
+      <button class="ghost" onclick="closeEdit()">취소</button>
+      <span style="flex:1"></span>
+      <button class="danger" id="mDel" onclick="delFromModal()">삭제</button>
+    </div>
+  </div>
+</div>
+
+<!-- 여기 담긴 내용이 곧 저장 상태다. 손으로 고치지 말 것 -->
+<ul artifact-sync id="store" hidden></ul>
+
+<div class="toast" id="toast" hidden></div>
+
+<script>
+/* ══════════════════════════════════════════════════
+   0. 공통
+   ══════════════════════════════════════════════════ */
+const KEY = 'gongmun-schedule-v2', RKEY = 'gongmun-roster-v1';
+const CATS = ['회의','교육','행사','출장·점검','제출·마감','보고','기타'];
+const DOWK = ['일','월','화','수','목','금','토'];
+const pad = n => String(n).padStart(2,'0');
+const ymd = (y,m,d) => `${y}-${pad(m)}-${pad(d)}`;
+const todayStr = () => { const t=new Date(); return ymd(t.getFullYear(),t.getMonth()+1,t.getDate()); };
+const uid = () => 'e'+Date.now().toString(36)+Math.floor(Math.random()*1e6).toString(36);
+const catVar = c => c.replace(/·/g,'');
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const dateObj = s => { const p=String(s).split('-'); return new Date(+p[0],+p[1]-1,+p[2]); };
+const dowOf = s => DOWK[dateObj(s).getDay()];
+const diffDays = (a,b) => Math.round((dateObj(b)-dateObj(a))/86400000);
+
+let DB = [], ROSTER = { groups:[], names:[], lead:2, skipWeekend:true };
+try { DB = JSON.parse(localStorage.getItem(KEY)||'[]') || []; } catch(e){ DB=[]; }
+try { Object.assign(ROSTER, JSON.parse(localStorage.getItem(RKEY)||'{}')); } catch(e){}
+/* 예전 버전(이름 목록만 저장) 호환 */
+if (!ROSTER.groups || !ROSTER.groups.length)
+  ROSTER.groups = (ROSTER.names||[]).length ? [{ team:'', members:ROSTER.names.slice() }] : [];
+
+/* 명단 텍스트 → 팀 구조.  "도시계획팀: 김철수, 이영희"  또는  이름만 한 줄씩 */
+function parseRoster(txt){
+  const groups = [], bare = [];
+  txt.split('\n').map(s=>s.trim()).filter(Boolean).forEach(line => {
+    const m = line.match(/^(.+?)\s*[:：]\s*(.+)$/);
+    if (m) groups.push({ team:m[1].trim(), members:m[2].split(/[,;·\/]/).map(s=>s.trim()).filter(Boolean) });
+    else bare.push(line);
+  });
+  if (bare.length) groups.push({ team:'', members:bare });
+  return groups;
+}
+const rosterText  = () => (ROSTER.groups||[]).map(g => g.team ? g.team+': '+g.members.join(', ') : g.members.join('\n')).join('\n');
+const rosterNames = () => (ROSTER.groups||[]).reduce((a,g)=>a.concat(g.members),[]).filter((v,i,a)=>a.indexOf(v)===i);
+const rosterTeams = () => (ROSTER.groups||[]).filter(g=>g.team).map(g=>g.team);
+const defaultUnit = () => rosterTeams().length ? 'team' : 'person';
+const unitTargets = u => (u==='team' && rosterTeams().length) ? rosterTeams() : rosterNames();
+const newTargets  = u => unitTargets(u).map(n=>({ n, ok:false }));
+/* ── 저장 ──
+   게시된 웹앱에서는 <ul artifact-sync> 안의 내용이 곧 저장 상태다.
+   그 DOM을 고치면 서버에 남고, 폰에서 담은 것이 PC에서도 보인다.
+   파일로 내려받아 혼자 쓸 때는 이 기능이 없으므로 브라우저 저장소를 쓴다. */
+let SYNC = false, muteObs = false;
+const touch = e => { if (e) e.mt = Date.now(); return e; };
+const store = () => document.getElementById('store');
+
+function saveLocal(){
+  try{
+    localStorage.setItem(KEY, JSON.stringify(DB));
+    localStorage.setItem(RKEY, JSON.stringify(ROSTER));
+  } catch(e){ toast('저장 공간이 가득 찼습니다'); }
+}
+function commitToDOM(){
+  const el = store(); if (!el) return;
+  muteObs = true;
+  el.innerHTML = '<li data-roster=\'' + esc(JSON.stringify(ROSTER)) + '\'></li>'
+    + DB.map(e => '<li data-e=\'' + esc(JSON.stringify(e)) + '\'></li>').join('');
+  setTimeout(()=>{ muteObs = false; }, 0);
+}
+function projectFromDOM(){
+  const el = store(); if (!el) return false;
+  const items = el.querySelectorAll('li[data-e]');
+  const r = el.querySelector('li[data-roster]');
+  if (!items.length && !r) return false;
+  DB = Array.from(items).map(li => { try { return JSON.parse(li.getAttribute('data-e')); } catch(e){ return null; } }).filter(Boolean);
+  if (r){ try { Object.assign(ROSTER, JSON.parse(r.getAttribute('data-roster'))); } catch(e){} }
+  if (!ROSTER.groups || !ROSTER.groups.length)
+    ROSTER.groups = (ROSTER.names||[]).length ? [{ team:'', members:ROSTER.names.slice() }] : [];
+  return true;
+}
+const save  = () => { saveLocal(); if (SYNC) commitToDOM(); };
+const saveR = () => { ROSTER.mt = Date.now(); saveLocal(); if (SYNC) commitToDOM(); };
+
+let toastTimer=null;
+function toast(msg){
+  const t=document.getElementById('toast'); t.textContent=msg; t.hidden=false;
+  clearTimeout(toastTimer); toastTimer=setTimeout(()=>t.hidden=true,2300);
+}
+
+/* 취합 회신기한 = 마감일 - lead일 (주말이면 앞 평일로) */
+function dueOf(e){
+  if (!e || e.kind !== 'collect') return null;
+  const lead = (e.lead == null ? ROSTER.lead : e.lead);
+  if (!lead || lead < 1) return null;
+  const d = dateObj(e.start); d.setDate(d.getDate() - lead);
+  if (ROSTER.skipWeekend) while (d.getDay()===0 || d.getDay()===6) d.setDate(d.getDate()-1);
+  return ymd(d.getFullYear(), d.getMonth()+1, d.getDate());
+}
+const doneCount = e => (e.people||[]).filter(p=>p.ok).length;
+
+/* ══════════════════════════════════════════════════
+   1. 파서
+   ══════════════════════════════════════════════════ */
+function normalize(t){
+  return String(t)
+    .replace(/\r\n?/g,'\n')
+    .replace(/[！-～]/g, ch => String.fromCharCode(ch.charCodeAt(0)-0xFEE0))
+    .replace(/　/g,' ')
+    .replace(/[‘’ʼ`´]/g,"'").replace(/[“”]/g,'"')
+    .replace(/[∼〜～]/g,'~').replace(/[–—―−]/g,'-')
+    .replace(/[^\S\n\t]+/g,' ');      /* 공백만 정리 — 표의 탭은 살려둔다 */
+}
+
+const RE_DATEKW = /(일시|일자|날짜|기간|기한|마감|제출|접수|개최|실시|예정|까지|부터|시행|납기|납부|회의|교육|연수|행사|출장|점검|보고|방문|심의|간담|워크숍|워크샵|세미나|설명회|평가|심사|회신|제출바람)/;
+const RE_DATE = /(?:(\d{4})|'(\d{2}))?\s*[.\-\/년]?\s*(\d{1,2})\s*[.\-\/월]\s*(\d{1,2})\s*(?:일|\.)?\s*(?:\(\s*([월화수목금토일])\s*\))?/g;
+const RE_TIME = /(오전|오후|AM|PM|am|pm)?\s*(\d{1,2})\s*(?::\s*(\d{1,2})|시\s*(?:(\d{1,2})\s*분)?)/g;
+
+function findDates(line){
+  const out=[]; let m; RE_DATE.lastIndex=0;
+  while ((m = RE_DATE.exec(line)) !== null){
+    if (!m[0].replace(/\s/g,'')){ RE_DATE.lastIndex++; continue; }
+    let i=m.index, len=m[0].length;
+    const lead=m[0].match(/^\s*/)[0].length; i+=lead; len-=lead;
+    len -= m[0].match(/\s*$/)[0].length;
+    if (line[i-1] && /\d/.test(line[i-1])) continue;
+    const mo=+m[3], da=+m[4];
+    if (!(mo>=1&&mo<=12&&da>=1&&da<=31)) continue;
+    const yr = m[1] ? +m[1] : (m[2] ? 2000+(+m[2]) : null);
+    out.push({ y:yr, mo, da, i, len, strong: !!(yr || m[5] || /[년월일]/.test(m[0])) });
+  }
+  return out;
+}
+
+function findTimes(line, blocked){
+  const out=[]; let m; RE_TIME.lastIndex=0;
+  while ((m = RE_TIME.exec(line)) !== null){
+    let i=m.index, len=m[0].length;
+    const lead=m[0].match(/^\s*/)[0].length; i+=lead; len-=lead;
+    if (line[i-1] && /\d/.test(line[i-1])) continue;
+    if (/시$/.test(m[0]) && line[m.index+m[0].length]==='간') continue;
+    if (blocked.some(b => i < b.i+b.len && i+len > b.i)) continue;
+    let h=+m[2];
+    const mi = m[3]!=null ? +m[3] : (m[4]!=null ? +m[4] : 0);
+    if (h>24 || mi>59) continue;
+    const ap=(m[1]||'').toLowerCase();
+    if ((ap==='오후'||ap==='pm') && h<12) h+=12;
+    if ((ap==='오전'||ap==='am') && h===12) h=0;
+    if (h===24) h=0;
+    out.push({ h, mi, i, len, txt: pad(h)+':'+pad(mi) });
+  }
+  return out;
+}
+
+function docTitleOf(lines){
+  for (const l of lines){
+    const m = l.match(/^\s*(?:제\s*목|건\s*명|과\s*업\s*명)\s*[:：]\s*(.+)$/);
+    if (m && m[1].trim().length>=2) return m[1].trim().slice(0,80);
+  }
+  const b = lines.join('\n').match(/[「『【]([^」』】]{4,70})[」』】]/);
+  if (b) return b[1].trim();
+  for (const l of lines){
+    if (findDates(l).length) continue;                        /* 날짜가 든 줄은 제목이 아니다 */
+    const t = l.trim().replace(/^[○●□■◇◆▷▶▪▫※*\-\s]+/,'');
+    if (/^(일\s*시|일\s*자|기\s*간|기\s*한|장\s*소|시\s*간|대\s*상|참\s*석|주\s*관)\s*[:：]/.test(t)) continue;
+    if (t.length>=5 && /[가-힣]/.test(t) && !/^(수신|참조|발신|경유|문서\s*번호|시행|보낸사람|받는사람|날짜|첨부)/.test(t))
+      return t.slice(0,80);
+  }
+  return '';
+}
+
+/* 제목 꼬리에 붙는 조사·서술어 정리 */
+const TAIL_DROP = /^(는|은|이|가|을|를|에|에서|로|으로|와|과|및|까지|부터|후|전|중|등|약|총)$/;
+const TAIL_VERB = /^(실시합니다|개최합니다|예정입니다|바랍니다|드립니다|합니다|입니다|하오니|하시기|하고자|실시|예정|바람|요망|함|임|건)$/;
+const TAIL_JOSA = /(는|은|를|을|에서|에게|으로)$/;
+
+function leftoverOf(line, spans){
+  const arr = line.split('');
+  spans.forEach(sp=>{ for(let i=sp.i;i<sp.i+sp.len&&i<arr.length;i++) arr[i]=' '; });
+  let s = arr.join('').replace(/ +/g,' ');
+  s = s.replace(/^[\s•·○●◦◯□■◇◆▷▶▪▫※*\-o]+/,'')
+       .replace(/^\s*\d{1,2}\s*[.)]\s*/,'')
+       .replace(/^\s*[가-힣]\s*[.)]\s*/,'')
+       .replace(/^\s*(붙임|첨부)\s*\d*\s*[.:]?\s*/,'')
+       /* 의미 있는 라벨은 낱말만 남기고, 나머지 라벨은 지운다 */
+       .replace(/제\s*출\s*기\s*한\s*[:：]/g,' 제출 ')
+       .replace(/회\s*신\s*기\s*한\s*[:：]/g,' 회신 ')
+       .replace(/접\s*수\s*기\s*간\s*[:：]/g,' 접수기간 ')
+       .replace(/교\s*육\s*기\s*간\s*[:：]/g,' 교육기간 ')
+       .replace(/(일\s*시|일\s*자|날\s*짜|기\s*간|기\s*한|마\s*감|시\s*간|장\s*소|대\s*상|주\s*관|주\s*최|참\s*석)\s*[:：]/g,' ')
+       .replace(/[()（）\[\]{}]/g,' ').replace(/[~\-]/g,' ').replace(/[:：]/g,' ')
+       .replace(/\s{2,}/g,' ').trim()
+       .replace(/^[,.:;·\s]+|[,.:;·\s]+$/g,'');
+
+  let toks = s.split(' ').filter(Boolean).filter(t => t!=='까지' && t!=='부터');
+  while (toks.length && (TAIL_DROP.test(toks[toks.length-1]) || TAIL_VERB.test(toks[toks.length-1]))) toks.pop();
+  if (toks.length){                                  /* 마지막 낱말의 조사 제거 */
+    const last = toks[toks.length-1];
+    const stem = last.replace(TAIL_JOSA,'');
+    if (stem.length >= 2) toks[toks.length-1] = stem;
+  }
+  s = toks.join(' ');
+  return (s.length >= 2 && /[가-힣]/.test(s)) ? s.slice(0,80) : '';
+}
+
+function catOf(text, isDue){
+  if (isDue || /(기한|마감|납기)/.test(text)) return '제출·마감';
+  if (/(회의|심의|위원회|간담회|협의회|자문|총회|심사|보고회)/.test(text)) return '회의';
+  if (/(교육|연수|워크숍|워크샵|세미나|강의|설명회)/.test(text)) return '교육';
+  if (/(행사|축제|기념식|개소식|발대식|박람회|체육대회|준공식|기공식)/.test(text)) return '행사';
+  if (/(출장|방문|견학|현장|점검|실사|감사|답사)/.test(text)) return '출장·점검';
+  if (/(보고회|업무보고|보고하여|보고할)/.test(text)) return '보고';
+  if (/(제출|송부|납부|회신|작성하여)/.test(text)) return '제출·마감';
+  if (/개최/.test(text)) return '행사';
+  return '기타';
+}
+
+/* 남에게 받아야 하는 건인지 추정 */
+function kindOf(cat, text){
+  if (/(취합|제출\s*바랍|회신\s*바랍|제출하여\s*주|보고하여\s*주|송부하여\s*주|팀별\s*제출|부서별\s*제출)/.test(text)) return 'collect';
+  if (['회의','교육','행사','출장·점검'].indexOf(cat) >= 0) return 'mine';   /* 참석하는 일 */
+  if (cat==='제출·마감' || cat==='보고') return 'collect';
+  if (/(각\s*팀|각\s*부서|해당\s*팀|팀별|부서별|담당자별|직원별)/.test(text)) return 'collect';
+  return 'mine';
+}
+
+/* ── 공문 생산자(= 우리가 제출할 상대방) 정보 ── */
+const RANK = '주무관|사무관|서기관|주사보|주사|서기|팀장|과장|계장|국장|실장|담당관|주임|반장|소장|위원장';
+const RE_TELG = /(0\d{1,2})[-.)\s]?(\d{3,4})[-.\s]?(\d{4})(?!\d)/g;
+const NOT_NAME = new RegExp('(전화|번호|연락|담당|문의|주소|팩스|이메일|기관|부서|공개|접수|시행|붙임|참조|수신'
+  + '|하시|주시|바랍|합니|습니|하여|되어|있는|없는|해당|관련|참고|비고|신청|제출|작성|아래|다음|이하|기타|경우|사항|내용|일정|기간|서류|결과|평가|심사|안내|공고'
+  + '|'+RANK+')');
+
+/* 팩스·문서번호를 피해서 전화번호 하나 고르기 */
+function telIn(s, from){
+  RE_TELG.lastIndex = from || 0;
+  let m;
+  while ((m = RE_TELG.exec(s)) !== null){
+    const before = s.slice(Math.max(0, m.index-10), m.index);
+    if (/(팩스|팩스번호|FAX|Fax|fax)\s*[:：번호]*\s*$/.test(before)) continue;
+    if (m.index > 0 && /[\d\-]/.test(s[m.index-1])) continue;
+    return m[1]+'-'+m[2]+'-'+m[3];
+  }
+  return '';
+}
+
+const DEPT = '[가-힣]{2,12}(?:과|팀|실|국|단|센터)';
+function nameIn(s){
+  const pats = [
+    /* 담당자: (부서) (직급) 이름 */
+    new RegExp('담\\s*당\\s*자?\\s*[:：]\\s*(?:'+DEPT+'\\s+)?(?:(?:'+RANK+')\\s+)?([가-힣]{2,4})'),
+    /* 문의(처): (부서) (직급) 이름 */
+    new RegExp('(?:문\\s*의(?:\\s*처)?|연\\s*락\\s*처|기안자|작성자)\\s*[:：]?\\s*(?:'+DEPT+'\\s+)?(?:(?:'+RANK+')\\s+)?([가-힣]{2,4})'),
+    /* 직급 이름  (기안자 주무관 김철수) */
+    new RegExp('(?:'+RANK+')\\s+([가-힣]{2,4})(?![가-힣])'),
+    /* 이름 직급  (최지훈 주무관) — 반드시 공백이 있어야 "도시계획과장" 오인식을 막는다 */
+    new RegExp('(?:^|[\\s(:：])([가-힣]{2,4})\\s+(?:'+RANK+')(?![가-힣])'),
+    /(?:보낸사람|발신인|보낸이)\s*[:：]\s*([가-힣]{2,4})/
+  ];
+  for (const p of pats){
+    const m = s.match(p);
+    if (m && m[1] && !NOT_NAME.test(m[1])) return m[1];
+  }
+  return '';
+}
+
+function findContact(lines){
+  const c = { org:'', name:'', tel:'', email:'' };
+  const text = lines.join('\n');
+
+  const em = text.match(/[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}/);
+  if (em) c.email = em[0];
+
+  /* 부서 — 문서번호 "도시계획과-1234" 가 가장 확실하다 */
+  const dn = text.match(/([가-힣]{2,15}(?:과|팀|실|국|단|센터|위원회))\s*-\s*\d{2,}/);
+  let dept = dn ? dn[1] : '';
+  let inst = '';
+  const fm = text.match(/^\s*(?:발\s*신|보낸사람|발신기관|시행처|기관명)\s*[:：]\s*(.+)$/m);
+  if (fm){
+    const v = fm[1].trim().replace(/[<(].*$/,'').trim();
+    const im = v.match(/([가-힣]{2,12}(?:도|시|군|구|청|부|처|원|회))/);
+    if (im) inst = im[1];
+    if (!dept){ const dm = v.match(/([가-힣]{2,15}(?:과|팀|실|국|단|센터))/); if (dm) dept = dm[1]; }
+  }
+  if (!inst){
+    const om = text.match(/([가-힣]{2,8}(?:특별자치도|특별자치시|특별시|광역시|도|시|군|구))\s+([가-힣]{2,15}(?:과|국|실|단|센터))/);
+    if (om){ inst = om[1]; if (!dept) dept = om[2]; }
+  }
+  c.org = [inst, dept].filter(Boolean).filter((v,i,a)=>a.indexOf(v)===i).join(' ');
+
+  /* 담당자·전화 — 라벨이 있는 줄을 먼저 훑고, 없으면 문서 전체 */
+  const hot = lines.filter(l => /(담\s*당|문\s*의|연\s*락\s*처|기안자|작성자|전\s*화)/.test(l));
+  for (const l of hot){
+    if (!c.name) c.name = nameIn(l);
+    if (!c.tel){
+      const ti = l.search(/(전\s*화|연\s*락\s*처|TEL|Tel|tel|☎)/);
+      c.tel = telIn(l, ti >= 0 ? ti : 0);
+    }
+    if (!c.org){                       /* 문의처 줄에 적힌 부서명도 받는다 */
+      const dm = l.match(new RegExp('('+DEPT+')'));
+      if (dm) c.org = dm[1];
+    }
+    if (c.name && c.tel) break;
+  }
+  if (!c.name) c.name = nameIn(text);
+  if (!c.tel)  c.tel  = telIn(text, 0);
+  return c;
+}
+
+/* 장소는 같은 줄 또는 바로 아래 2줄까지만 (일시 다음 줄에 장소가 오는 관례) */
+function placeNear(lines, idx){
+  for (const j of [idx, idx+1, idx+2, idx-1]){
+    if (j<0 || j>=lines.length) continue;
+    const m = lines[j].match(/장\s*소\s*[:：]?\s+([^,\n]{2,40})/);
+    if (m) return m[1].trim().replace(/[.,\s]+$/,'');
+  }
+  return '';
+}
+
+/* 연도가 안 적힌 날짜는 올해로 보되, 이미 반년 넘게 지난 날이면 내년으로 본다.
+   (12월에 받은 공문의 "1. 15." 는 내년 1월이다) */
+function guessYear(y, mo, da){
+  const t = new Date(); t.setHours(0,0,0,0);
+  if ((new Date(y, mo-1, da) - t) / 86400000 < -180) return y + 1;
+  return y;
+}
+
+/* PDF 표가 한 줄로 납작해지면 날짜가 여러 개 섞인다 — 날짜 사이에서 나눈다 */
+function splitRuns(line){
+  if (line.length < 80) return [line];
+  const ds = findDates(line);
+  if (ds.length < 2) return [line];
+  const anchors = [];
+  for (let k=0;k<ds.length;k++){
+    if (k > 0){
+      const gap = line.slice(ds[k-1].i+ds[k-1].len, ds[k].i);
+      if (/^[\s~\-]*$/.test(gap)) continue;          /* 기간 표기는 한 덩어리 */
+    }
+    anchors.push(ds[k]);
+  }
+  if (anchors.length < 2) return [line];
+  const out = []; let prev = 0;
+  for (let k=1;k<anchors.length;k++){
+    const cut = Math.floor((anchors[k-1].i + anchors[k-1].len + anchors[k].i) / 2);
+    if (cut > prev){ out.push(line.slice(prev, cut)); prev = cut; }
+  }
+  out.push(line.slice(prev));
+  return out.filter(x=>x.trim());
+}
+
+function parseText(text, baseYear){
+  const src = normalize(text).replace(/\t/g,' ');
+  const lines = [];
+  src.split('\n').forEach(l => { for (const p of splitRuns(l)) lines.push(p); });
+  const doc = docTitleOf(lines);
+  const yHit = src.match(/(20\d{2})\s*[.\-년]/);
+  const docYear = yHit ? +yHit[1] : baseYear;
+  const events = [], seen = new Set();
+
+  lines.forEach((line, li) => {
+    if (!line.trim()) return;
+    if (/^\s*\d*\s*[.)]?\s*관\s*련\s*[:：]/.test(line) && !/일시|기간|기한/.test(line)) return;
+
+    let dates = findDates(line);
+    if (!dates.length) return;
+    const kw = RE_DATEKW.test(line);
+    /* "도시계획과-4567(2026. 6. 11.)" 같은 근거문서 표기의 날짜는 일정이 아님 */
+    const isDocNo = /[가-힣]{2,}(과|팀|실|부|국|청)\s*-\s*\d+/.test(line);
+    dates = dates.filter(d => {
+      if (!(d.strong || kw)) return false;
+      if (isDocNo && /\(\s*$/.test(line.slice(0, d.i))) return false;
+      return true;
+    });
+    if (!dates.length) return;
+
+    const times = findTimes(line, dates);
+    let label = leftoverOf(line, dates.concat(times));
+    if (!label){                       /* 바로 위의 짧은 개조식 소제목만 빌려온다 */
+      for (let j=li-1; j>=Math.max(0,li-3); j--){
+        if (!lines[j].trim()) continue;
+        if (findDates(lines[j]).length) continue;
+        if (/(니다|하오니|하고자|같이|위 호와)/.test(lines[j])) continue;   /* 서술 문장 제외 */
+        const up = leftoverOf(lines[j], []);
+        if (up && up.length>=3 && up.length<=30){ label = up; break; }
+      }
+    }
+    /* "제출" 처럼 라벨만 남은 짧은 조각보다는 공문 제목이 낫다 */
+    const title = ((label.length >= 3 ? label : (doc || label)) || '일정').slice(0,80);
+
+    let lastY = null;
+    dates.forEach(d => { if (!d.y) d.y = (lastY != null) ? lastY : guessYear(docYear, d.mo, d.da); lastY = d.y; });
+
+    const groups = [];
+    for (let k=0; k<dates.length; k++){
+      const cur = dates[k], nxt = dates[k+1];
+      if (nxt && /^\s*(~|-|부터)?\s*$/.test(line.substring(cur.i+cur.len, nxt.i)) &&
+          /[~\-]|부터/.test(line.substring(cur.i+cur.len, nxt.i))){
+        groups.push({ s:cur, e:nxt }); k++; continue;
+      }
+      groups.push({ s:cur, e:cur });
+    }
+
+    let t1=null, t2=null;
+    if (times.length===1) t1=times[0];
+    else if (times.length>=2){
+      t1 = times[0];
+      const gap = line.substring(times[0].i+times[0].len, times[1].i);
+      if (gap.length<=4 && /^\s*(~|-|부터)?\s*$/.test(gap)) t2 = times[1];
+    }
+
+    groups.forEach(g => {
+      const start = ymd(g.s.y,g.s.mo,g.s.da), end0 = ymd(g.e.y,g.e.mo,g.e.da);
+      const isDue = /^\s*(까지|한)/.test(line.substr(g.e.i+g.e.len, 8)) || /(기한|마감)/.test(line);
+      const cat = catOf(title+' '+line, isDue);
+      const key = start+'|'+(t1?t1.txt:'')+'|'+title;
+      if (seen.has(key)) return;
+      seen.add(key);
+      const kind = kindOf(cat, title+' '+line);
+      events.push({
+        id:uid(), on:true, title,
+        start, end: end0 < start ? start : end0,
+        time: t1?t1.txt:'', etime: t2?t2.txt:'',
+        cat, kind, lead: kind==='collect' ? ROSTER.lead : 0,
+        unit: defaultUnit(),
+        people: kind==='collect' ? newTargets(defaultUnit()) : [],
+        place: cat==='제출·마감' ? '' : placeNear(lines, li), doc, memo:'', done:false,
+        src: line.trim().slice(0,200)
+      });
+    });
+  });
+
+  events.sort((a,b)=>(a.start+a.time).localeCompare(b.start+b.time));
+  return events;
+}
+
+/* ══════════════════════════════════════════════════
+   1-B. 표(엑셀·CSV) 인식
+   ══════════════════════════════════════════════════ */
+const HDR_DATE  = /(일자|일시|날짜|기한|마감|기간|제출일|회신일|예정일|시행일|개최일)/;
+const HDR_TITLE = /(제목|내용|업무|과업|사업|안건|건명|일정|행사|과제|사항)/;
+const HDR_PLACE = /(장소|위치|개최지)/;
+const HDR_WHO   = /(담당|부서|팀명|제출자|주관|책임)/;
+const HDR_MEMO  = /(비고|메모|참고|특이)/;
+
+/* 탭으로 나뉜 여러 줄이면 표로 본다 */
+function looksTabular(t){
+  const ls = t.split('\n').filter(l=>l.trim());
+  if (ls.length < 2) return false;
+  const tabbed = ls.filter(l => l.indexOf('\t') >= 0).length;
+  return tabbed >= 2 && tabbed >= ls.length * 0.5;
+}
+
+function parseCSV(text){
+  const rows=[]; let row=[], cur='', q=false;
+  for (let i=0;i<text.length;i++){
+    const ch = text[i];
+    if (q){
+      if (ch === '"'){ if (text[i+1] === '"'){ cur+='"'; i++; } else q=false; }
+      else cur += ch;
+    }
+    else if (ch === '"') q = true;
+    else if (ch === ','){ row.push(cur); cur=''; }
+    else if (ch === '\n'){ row.push(cur); rows.push(row); row=[]; cur=''; }
+    else if (ch !== '\r') cur += ch;
+  }
+  if (cur !== '' || row.length){ row.push(cur); rows.push(row); }
+  return rows;
+}
+
+function parseTable(rows, baseYear){
+  /* 헤더 행 찾기 */
+  let hi=-1, map={};
+  for (let i=0; i<Math.min(6, rows.length); i++){
+    const m={}; let hit=0;
+    rows[i].forEach((c,j)=>{
+      const t = String(c||'').trim();
+      if (!t || t.length>14) return;
+      if (m.date ==null && HDR_DATE.test(t)) { m.date=j; m.dateHdr=t; hit++; }
+      else if (m.title==null && HDR_TITLE.test(t)){ m.title=j; hit++; }
+      else if (m.place==null && HDR_PLACE.test(t)){ m.place=j; hit++; }
+      else if (m.who  ==null && HDR_WHO.test(t))  { m.who=j;   hit++; }
+      else if (m.memo ==null && HDR_MEMO.test(t)) { m.memo=j;  hit++; }
+    });
+    if (hit>=2 && m.date!=null){ hi=i; map=m; break; }
+  }
+  const body = hi>=0 ? rows.slice(hi+1) : rows;
+  const events=[], seen=new Set();
+
+  body.forEach(r => {
+    const cells = (r||[]).map(c => normalize(String(c==null?'':c)).trim());
+    if (!cells.some(Boolean)) return;
+    const joined = cells.filter(Boolean).join(' | ');
+
+    /* 날짜 셀: 헤더가 지목한 열 우선, 없으면 날짜가 든 첫 셀 */
+    let di = map.date!=null ? map.date : -1;
+    let dates = di>=0 ? findDates(cells[di]||'') : [];
+    if (!dates.length){
+      for (let j=0;j<cells.length;j++){
+        const d = findDates(cells[j]);
+        if (d.length && (d[0].strong || RE_DATEKW.test(cells[j]))){ di=j; dates=d; break; }
+      }
+    }
+    if (!dates.length) return;
+
+    /* 제목: 헤더가 지목한 열 → 없으면 날짜 열을 뺀 가장 긴 한글 셀 */
+    let title = map.title!=null ? cells[map.title] : '';
+    if (!title){
+      let best='';
+      cells.forEach((c,j)=>{ if (j!==di && /[가-힣]{2,}/.test(c) && c.length>best.length) best=c; });
+      title = best;
+    }
+    title = (title || '일정').replace(/\s{2,}/g,' ').trim().slice(0,80);
+
+    /* 시각: 날짜 셀 안 → 없으면 시각만 든 셀 */
+    let times = findTimes(cells[di]||'', dates);
+    if (!times.length){
+      for (const c of cells){
+        if (/^\s*(오전|오후)?\s*\d{1,2}\s*(:|시)/.test(c)){ const t=findTimes(c,[]); if (t.length){ times=t; break; } }
+      }
+    }
+
+    let lastY=null;
+    dates.forEach(d=>{ if(!d.y) d.y = (lastY != null) ? lastY : guessYear(baseYear, d.mo, d.da); lastY=d.y; });
+    const s = dates[0], e = dates.length>1 ? dates[dates.length-1] : dates[0];
+    const start = ymd(s.y,s.mo,s.da);
+    let end = ymd(e.y,e.mo,e.da);
+    if (end < start) end = start;
+
+    const hdrTxt = map.dateHdr || '';
+    const isDue = /(기한|마감|제출일|회신일)/.test(hdrTxt) || /까지/.test(cells[di]||'');
+    const cat = catOf(title+' '+hdrTxt+' '+joined, isDue);
+    const who = map.who!=null ? cells[map.who] : '';
+    let kind = kindOf(cat, joined + (who?' 담당자별':''));
+    if (who && /[가-힣]{2,}/.test(who)) kind = 'collect';
+
+    const key = start+'|'+(times[0]?times[0].txt:'')+'|'+title;
+    if (seen.has(key)) return;
+    seen.add(key);
+
+    const people = kind==='collect'
+      ? (who ? who.split(/[,;·\/]| {2,}/).map(x=>x.trim()).filter(x=>/[가-힣]{2,}/.test(x)).map(n=>({n,ok:false}))
+             : newTargets(defaultUnit()))
+      : [];
+
+    events.push({
+      id:uid(), on:true, title, start, end,
+      time: times[0]?times[0].txt:'', etime: times[1]?times[1].txt:'',
+      cat, kind, lead: kind==='collect' ? ROSTER.lead : 0,
+      unit: people.length ? 'person' : defaultUnit(),
+      people: people.length ? people : (kind==='collect' ? newTargets(defaultUnit()) : []),
+      place: map.place!=null ? cells[map.place] : '',
+      doc: map.memo!=null ? cells[map.memo] : '',
+      memo:'', done:false, src: joined.slice(0,200)
+    });
+  });
+
+  events.sort((a,b)=>(a.start+a.time).localeCompare(b.start+b.time));
+  return events;
+}
+
+/* 줄글이든 표든 알아서 */
+function parseAny(text, baseYear){
+  baseYear = baseYear || new Date().getFullYear();
+  const t = normalize(text);
+  let ev = null;
+  if (looksTabular(t)){
+    const rows = t.split('\n').filter(l=>l.trim()).map(l=>l.split('\t'));
+    ev = parseTable(rows, baseYear);
+    if (!ev.length) ev = null;                /* 표로 안 잡히면 줄글로 재시도 */
+  }
+  if (!ev) ev = parseText(text, baseYear);
+
+  const c = findContact(t.replace(/\t/g,' ').split('\n'));
+  LAST_CONTACT = c;
+  ev.forEach(e => {
+    if (!e.cOrg)   e.cOrg   = c.org;
+    if (!e.cName)  e.cName  = c.name;
+    if (!e.cTel)   e.cTel   = c.tel;
+    if (!e.cEmail) e.cEmail = c.email;
+  });
+  return ev;
+}
+let LAST_CONTACT = { org:'', name:'', tel:'', email:'' };
+
+/* ══════════════════════════════════════════════════
+   1-C. PDF에서 글자 뽑기 — 외부 라이브러리 없이 브라우저 기본 기능만 사용
+   ══════════════════════════════════════════════════ */
+/* 바이트를 글자로 1:1 대응시킨다.
+   TextDecoder('latin1') 은 이름과 달리 windows-1252 로 동작해서
+   0x80~0x9F 구간을 다른 문자로 바꿔버린다 — PDF 해석에는 쓸 수 없다. */
+function binStr(u8){
+  let s = '';
+  for (let i=0;i<u8.length;i+=0x8000)
+    s += String.fromCharCode.apply(null, u8.subarray(i, Math.min(i+0x8000, u8.length)));
+  return s;
+}
+
+async function inflateWith(u8, fmt){
+  const st = new Blob([u8]).stream().pipeThrough(new DecompressionStream(fmt));
+  return new Uint8Array(await new Response(st).arrayBuffer());
+}
+async function pdfInflate(u8){
+  try { return await inflateWith(u8, 'deflate'); }
+  catch(e){ return await inflateWith(u8, 'deflate-raw'); }
+}
+
+/* PNG 예측기 되돌리기 (/Predictor 10~15) */
+function unpredict(d, colors, columns, bpc){
+  const bpp = Math.max(1, (colors*bpc) >> 3);
+  const rowLen = ((columns*colors*bpc) + 7) >> 3;
+  const out = new Uint8Array(Math.floor(d.length/(rowLen+1))*rowLen);
+  let o = 0, prev = new Uint8Array(rowLen);
+  for (let p=0; p+rowLen < d.length+1; p += rowLen+1){
+    const ft = d[p], row = d.subarray(p+1, p+1+rowLen), cur = new Uint8Array(rowLen);
+    for (let i=0;i<rowLen;i++){
+      const a = i>=bpp ? cur[i-bpp] : 0, b = prev[i], c = i>=bpp ? prev[i-bpp] : 0;
+      let v = row[i];
+      if (ft===1) v += a;
+      else if (ft===2) v += b;
+      else if (ft===3) v += (a+b)>>1;
+      else if (ft===4){
+        const pa=Math.abs(b-c), pb=Math.abs(a-c), pc=Math.abs(a+b-2*c);
+        v += (pa<=pb && pa<=pc) ? a : (pb<=pc ? b : c);
+      }
+      cur[i] = v & 255;
+    }
+    out.set(cur, o); o += rowLen; prev = cur;
+  }
+  return out.subarray(0, o);
+}
+
+function ascii85(s){
+  s = s.replace(/\s/g,'').replace(/^<~/,'').replace(/~>$/,'');
+  const out = []; let t = 0, n = 0;
+  for (const ch of s){
+    if (ch === 'z' && n === 0){ out.push(0,0,0,0); continue; }
+    t = t*85 + (ch.charCodeAt(0)-33); n++;
+    if (n === 5){ out.push((t>>>24)&255,(t>>>16)&255,(t>>>8)&255,t&255); t=0; n=0; }
+  }
+  if (n){
+    for (let i=n;i<5;i++) t = t*85 + 84;
+    const b = [(t>>>24)&255,(t>>>16)&255,(t>>>8)&255,t&255];
+    for (let i=0;i<n-1;i++) out.push(b[i]);
+  }
+  return new Uint8Array(out);
+}
+
+/* "N 0 obj … endobj" 전부 모으기 */
+function pdfObjects(raw, bytes){
+  const objs = new Map();
+  const re = /(\d+)\s+(\d+)\s+obj\b/g;
+  let m;
+  while ((m = re.exec(raw)) !== null){
+    const num = +m[1], start = m.index + m[0].length;
+    const end = raw.indexOf('endobj', start);
+    if (end < 0) continue;
+    const body = raw.slice(start, end);
+    const si = body.indexOf('stream');
+    let dict = body, data = null;
+    if (si >= 0){
+      dict = body.slice(0, si);
+      let p = start + si + 6;
+      if (raw[p] === '\r') p++;
+      if (raw[p] === '\n') p++;
+      const lm = dict.match(/\/Length\s+(\d+)(?!\s+\d+\s+R)/);
+      let e2 = -1;
+      if (lm){
+        e2 = p + (+lm[1]);
+        if (!/^\s*endstream/.test(raw.slice(e2, e2+20))) e2 = -1;   /* 길이가 안 맞으면 다시 찾는다 */
+      }
+      if (e2 < 0){
+        e2 = raw.indexOf('endstream', p);
+        while (e2 > p && (raw[e2-1] === '\n' || raw[e2-1] === '\r')) e2--;
+      }
+      if (e2 > p) data = bytes.subarray(p, e2);
+    }
+    objs.set(num, { dict, data });
+    re.lastIndex = end;
+  }
+  return objs;
+}
+
+async function decodeStream(o){
+  if (!o || !o.data) return null;
+  const fm = o.dict.match(/\/Filter\s*(\/[A-Za-z0-9]+|\[[^\]]*\])/);
+  const filters = fm ? (fm[1].match(/\/[A-Za-z0-9]+/g) || []) : [];
+  let d = o.data;
+  for (const f of filters){
+    if (f === '/FlateDecode') d = await pdfInflate(d);
+    else if (f === '/ASCII85Decode') d = ascii85(binStr(d));
+    else if (f === '/ASCIIHexDecode'){
+      const h = binStr(d).replace(/[^0-9A-Fa-f]/g,'');
+      d = new Uint8Array(h.length>>1);
+      for (let i=0;i<d.length;i++) d[i] = parseInt(h.substr(i*2,2),16);
+    }
+    else return null;                                   /* 이미지 등 — 글자가 아니다 */
+  }
+  const pm = o.dict.match(/\/Predictor\s+(\d+)/);
+  if (pm && +pm[1] >= 10){
+    const g = (k, dflt) => { const x = o.dict.match(new RegExp('\\/'+k+'\\s+(\\d+)')); return x ? +x[1] : dflt; };
+    d = unpredict(d, g('Colors',1), g('Columns',1), g('BitsPerComponent',8));
+  }
+  return d;
+}
+
+/* PDF 1.5부터는 객체를 압축해 묶어둔다 (/ObjStm) */
+async function expandObjStm(objs){
+  for (const pair of Array.from(objs)){
+    const o = pair[1];
+    if (!o.data || !/\/Type\s*\/ObjStm/.test(o.dict)) continue;
+    let d = null;
+    try { d = await decodeStream(o); } catch(e){ continue; }
+    if (!d) continue;
+    const s = binStr(d);
+    const n = +((o.dict.match(/\/N\s+(\d+)/)||[])[1] || 0);
+    const first = +((o.dict.match(/\/First\s+(\d+)/)||[])[1] || 0);
+    if (!n || !first) continue;
+    const head = s.slice(0, first).trim().split(/\s+/).map(Number);
+    for (let i=0;i<n;i++){
+      const on = head[2*i], off = head[2*i+1];
+      const nx = (i+1<n) ? head[2*i+3] : (s.length - first);
+      if (on != null && !objs.has(on)) objs.set(on, { dict: s.slice(first+off, first+nx), data: null });
+    }
+  }
+}
+
+/* << >> 짝을 맞춰 잘라내기 */
+function sliceDict(s, from){
+  const i = s.indexOf('<<', from);
+  if (i < 0) return '';
+  let depth = 0, p = i;
+  while (p < s.length){
+    if (s.startsWith('<<', p)){ depth++; p += 2; }
+    else if (s.startsWith('>>', p)){ depth--; p += 2; if (!depth) return s.slice(i, p); }
+    else p++;
+  }
+  return s.slice(i);
+}
+
+function hexToStr(h){
+  if (h.length % 4) h = h.padStart(Math.ceil(h.length/4)*4, '0');
+  let s = '';
+  for (let i=0;i+4<=h.length;i+=4) s += String.fromCharCode(parseInt(h.substr(i,4),16));
+  return s;
+}
+
+/* 글꼴의 코드 → 유니코드 대응표 */
+function parseCMap(txt){
+  const map = new Map(); let codeLen = 0, mm;
+  /* 코드 폭은 codespacerange 가 알려준다 (대응표 표기는 섞여 있을 때가 있다) */
+  const cs = txt.match(/begincodespacerange([\s\S]*?)endcodespacerange/);
+  if (cs){
+    const c = cs[1].match(/<([0-9A-Fa-f]+)>/);
+    if (c) codeLen = Math.ceil(c[1].length/2);
+  }
+  const fixed = codeLen > 0;
+  const bfc = /beginbfchar([\s\S]*?)endbfchar/g;
+  while ((mm = bfc.exec(txt)) !== null){
+    const re = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]*)>/g; let g;
+    while ((g = re.exec(mm[1])) !== null){
+      if (!fixed) codeLen = Math.max(codeLen, Math.ceil(g[1].length/2));
+      map.set(parseInt(g[1],16), hexToStr(g[2]));
+    }
+  }
+  const bfr = /beginbfrange([\s\S]*?)endbfrange/g;
+  while ((mm = bfr.exec(txt)) !== null){
+    const re = /<([0-9A-Fa-f]+)>\s*<([0-9A-Fa-f]+)>\s*(?:\[([\s\S]*?)\]|<([0-9A-Fa-f]*)>)/g; let g;
+    while ((g = re.exec(mm[1])) !== null){
+      const lo = parseInt(g[1],16), hi = parseInt(g[2],16);
+      if (!fixed) codeLen = Math.max(codeLen, Math.ceil(g[1].length/2));
+      if (g[3] != null){
+        const arr = g[3].match(/<([0-9A-Fa-f]*)>/g) || [];
+        for (let i=0;i<arr.length;i++) map.set(lo+i, hexToStr(arr[i].slice(1,-1)));
+      } else if (g[4] != null){
+        const base = parseInt(g[4],16), w = g[4].length;
+        for (let c=lo; c<=hi && c-lo<65536; c++)
+          map.set(c, hexToStr((base + (c-lo)).toString(16).padStart(w,'0')));
+      }
+    }
+  }
+  return { map, codeLen: codeLen || 2 };
+}
+
+/* 페이지의 /Resources /Font 에서 글꼴별 대응표를 만든다 */
+async function pageFonts(objs, resDict){
+  const fonts = {};
+  const fi = resDict.indexOf('/Font');
+  if (fi < 0) return fonts;
+  let fdict = resDict.slice(fi+5).replace(/^\s+/,'');
+  if (fdict.startsWith('<<')) fdict = sliceDict(resDict, fi);
+  else {
+    const r = fdict.match(/^(\d+)\s+\d+\s+R/);
+    if (!r) return fonts;
+    const o = objs.get(+r[1]);
+    fdict = o ? sliceDict(o.dict, 0) : '';
+  }
+  const re = /\/([^\s/<>\[\]()]+)\s+(\d+)\s+\d+\s+R/g; let g;
+  while ((g = re.exec(fdict)) !== null){
+    const fo = objs.get(+g[2]);
+    if (!fo) continue;
+    const composite = /\/Subtype\s*\/Type0/.test(fo.dict);
+    let cmap = { map:new Map(), codeLen: composite ? 2 : 1 };
+    const tu = fo.dict.match(/\/ToUnicode\s+(\d+)\s+\d+\s+R/);
+    if (tu){
+      try {
+        const d = await decodeStream(objs.get(+tu[1]));
+        if (d){
+          cmap = parseCMap(binStr(d));
+          if (!composite) cmap.codeLen = 1;      /* 단순 글꼴은 항상 1바이트 */
+        }
+      } catch(e){}
+    }
+    fonts[g[1]] = cmap;
+  }
+  return fonts;
+}
+
+function decodeShow(str, font){
+  if (!font || !font.map || !font.map.size){        /* 대응표가 없으면 아스키만 살린다 */
+    let t = '';
+    for (let i=0;i<str.length;i++){ const c = str.charCodeAt(i); if (c >= 32 && c < 127) t += str[i]; }
+    return t;
+  }
+  const n = font.codeLen === 1 ? 1 : 2;
+  let s = '';
+  for (let i=0; i+n <= str.length; i += n){
+    let code = 0;
+    for (let k=0;k<n;k++) code = (code<<8) | (str.charCodeAt(i+k) & 255);
+    const v = font.map.get(code);
+    if (v != null) s += v;
+    else if (n === 1 && code >= 32 && code < 127) s += String.fromCharCode(code);
+  }
+  return s;
+}
+
+/* 내용 스트림을 훑어 글자와 줄바꿈을 뽑는다 */
+function runContent(src, fonts){
+  let out = '', font = null, lastY = null, lastX = null, fsize = 10, since = 0, i = 0;
+  const ops = [];
+  const nl = () => { if (out && !out.endsWith('\n')) out += '\n'; since = 0; };
+  const add = t => { out += t; since += t.length; };
+  const readLiteral = () => {
+    let depth = 1, s = '';
+    i++;
+    while (i < src.length){
+      const c = src[i];
+      if (c === '\\'){
+        const d = src[i+1], esc = { n:'\n', r:'\r', t:'\t', b:'\b', f:'\f' };
+        if (esc[d] != null){ s += esc[d]; i += 2; }
+        else if (d >= '0' && d <= '7'){
+          let o = ''; i++;
+          while (o.length < 3 && src[i] >= '0' && src[i] <= '7'){ o += src[i]; i++; }
+          s += String.fromCharCode(parseInt(o,8));
+        }
+        else if (d === '\n'){ i += 2; }
+        else { s += d; i += 2; }
+        continue;
+      }
+      if (c === '('){ depth++; s += c; i++; continue; }
+      if (c === ')'){ depth--; i++; if (!depth) break; s += ')'; continue; }
+      s += c; i++;
+    }
+    return s;
+  };
+
+  while (i < src.length){
+    const c = src[i];
+    if (c === '%'){ while (i < src.length && src[i] !== '\n') i++; continue; }
+    if (c <= ' '){ i++; continue; }
+    if (c === '('){ ops.push({ s: readLiteral() }); continue; }
+    if (c === '<'){
+      if (src[i+1] === '<'){ i += 2; continue; }
+      const e = src.indexOf('>', i);
+      const h = src.slice(i+1, e < 0 ? src.length : e).replace(/[^0-9A-Fa-f]/g,'');
+      let s = '';
+      for (let k=0;k+2<=h.length;k+=2) s += String.fromCharCode(parseInt(h.substr(k,2),16));
+      if (h.length % 2) s += String.fromCharCode(parseInt(h.slice(-1)+'0',16));
+      ops.push({ s }); i = (e < 0 ? src.length : e+1); continue;
+    }
+    if (c === '>'){ i += (src[i+1] === '>' ? 2 : 1); continue; }
+    if (c === '[' || c === ']'){ i++; continue; }
+    if (c === '/'){
+      let j = i+1;
+      while (j < src.length && !/[\s/<>\[\]()]/.test(src[j])) j++;
+      ops.push({ n: src.slice(i+1, j) }); i = j; continue;
+    }
+    if (/[-+.\d]/.test(c)){
+      let j = i;
+      while (j < src.length && /[-+.\d]/.test(src[j])) j++;
+      ops.push({ v: parseFloat(src.slice(i,j)) }); i = j; continue;
+    }
+    let j = i;
+    while (j < src.length && /[A-Za-z*'"]/.test(src[j])) j++;
+    const op = src.slice(i, j) || src[i];
+    i = (j > i ? j : i+1);
+
+    const strs = [], nums = [], names = [];
+    for (const o of ops){
+      if (o.s !== undefined) strs.push(o);
+      else if (o.v !== undefined) nums.push(o);
+      else if (o.n !== undefined) names.push(o);
+    }
+
+    if (op === 'Tf'){
+      font = names.length ? (fonts[names[names.length-1].n] || null) : font;
+      if (nums.length) fsize = Math.abs(nums[nums.length-1].v) || fsize;
+    }
+    else if (op === 'Tj' || op === "'" || op === '"'){
+      if (op !== 'Tj') nl();
+      if (strs.length) add(decodeShow(strs[strs.length-1].s, font));
+    }
+    else if (op === 'TJ'){
+      for (const o of ops){
+        if (o.s !== undefined) add(decodeShow(o.s, font));
+        else if (o.v !== undefined && o.v < -160) add(' ');
+      }
+    }
+    else if (op === 'Td' || op === 'TD'){
+      if (nums.length >= 2 && nums[nums.length-1].v !== 0) nl();
+    }
+    else if (op === 'T*'){ nl(); }
+    else if (op === 'Tm'){
+      /* 한 줄을 여러 조각으로 나눠 찍는 PDF가 많다.
+         조각마다 줄을 바꾸면 안 되고, 세로 위치가 실제로 달라질 때만 바꾼다. */
+      if (nums.length >= 6){
+        const y = nums[nums.length-1].v, x = nums[nums.length-2].v;
+        if (lastY !== null && Math.abs(y - lastY) > 1.5) nl();
+        else if (lastX !== null){
+          /* 지금까지 찍은 글자 폭을 어림잡아, 그보다 훨씬 오른쪽이면 표의 다음 칸이다 */
+          const endX = lastX + since * fsize * 0.55;
+          if (x - endX > fsize * 1.2 && out && !/[\t\n ]$/.test(out)) out += '\t';
+        }
+        lastY = y; lastX = x; since = 0;
+      }
+    }
+    ops.length = 0;
+  }
+  return out;
+}
+
+async function pdfToText(bytes){
+  const raw = binStr(bytes);
+  if (/\/Encrypt\s+\d+\s+\d+\s+R/.test(raw)) throw new Error('암호가 걸린 PDF입니다');
+  const objs = pdfObjects(raw, bytes);
+  await expandObjStm(objs);
+
+  const pages = [];
+  for (const pair of objs) if (/\/Type\s*\/Page[^s]/.test(pair[1].dict)) pages.push(pair[0]);
+  pages.sort((a,b)=>a-b);
+
+  let text = '';
+  for (const pn of pages){
+    const pg = objs.get(pn);
+    let res = '';
+    const ri = pg.dict.indexOf('/Resources');
+    if (ri >= 0){
+      const tail = pg.dict.slice(ri+10).replace(/^\s+/,'');
+      if (tail.startsWith('<<')) res = sliceDict(pg.dict, ri);
+      else { const r = tail.match(/^(\d+)\s+\d+\s+R/); if (r && objs.get(+r[1])) res = objs.get(+r[1]).dict; }
+    }
+    if (!res){                                    /* 자원은 부모에서 물려받기도 한다 */
+      const par = pg.dict.match(/\/Parent\s+(\d+)\s+\d+\s+R/);
+      if (par && objs.get(+par[1])){
+        const p2 = objs.get(+par[1]).dict, r2 = p2.indexOf('/Resources');
+        if (r2 >= 0) res = sliceDict(p2, r2);
+      }
+    }
+    const fonts = await pageFonts(objs, res || '');
+
+    const cm = pg.dict.match(/\/Contents\s*(\d+)\s+\d+\s+R|\/Contents\s*\[([^\]]*)\]/);
+    const refs = [];
+    if (cm){
+      if (cm[1]) refs.push(+cm[1]);
+      else (cm[2].match(/(\d+)\s+\d+\s+R/g)||[]).forEach(r=>refs.push(+r.match(/\d+/)[0]));
+    }
+    for (const r of refs){
+      try {
+        const d = await decodeStream(objs.get(r));
+        if (d) text += runContent(binStr(d), fonts) + '\n';
+      } catch(e){}
+    }
+    text += '\n';
+  }
+  return text.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* ══════════════════════════════════════════════════
+   1-D. 파일 읽기 (PDF / 엑셀 / CSV / 텍스트 / 이미지)
+   ══════════════════════════════════════════════════ */
+const unxml = s => String(s)
+  .replace(/&lt;/g,'<').replace(/&gt;/g,'>').replace(/&quot;/g,'"').replace(/&apos;/g,"'")
+  .replace(/&#x([0-9a-fA-F]+);/g,(m,h)=>String.fromCodePoint(parseInt(h,16)))
+  .replace(/&#(\d+);/g,(m,d)=>String.fromCodePoint(+d))
+  .replace(/&amp;/g,'&');
+
+function colIdx(ref){ let n=0; for (const ch of ref) n = n*26 + (ch.charCodeAt(0)-64); return n-1; }
+function serialToYmd(n){
+  if (n < 20 || n > 80000) return String(n);
+  const d = new Date(Math.round((n-25569)*86400000));
+  return ymd(d.getUTCFullYear(), d.getUTCMonth()+1, d.getUTCDate());
+}
+
+async function unzip(buf){
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  let eo = -1;
+  for (let i=buf.length-22; i>=0 && i>buf.length-70000; i--) if (dv.getUint32(i,true)===0x06054b50){ eo=i; break; }
+  if (eo < 0) throw new Error('zip 아님');
+  const n = dv.getUint16(eo+10,true);
+  let p = dv.getUint32(eo+16,true);
+  const out = {}, dec = new TextDecoder();
+  for (let k=0;k<n;k++){
+    if (dv.getUint32(p,true) !== 0x02014b50) break;
+    const method=dv.getUint16(p+10,true), csize=dv.getUint32(p+20,true);
+    const nlen=dv.getUint16(p+28,true), elen=dv.getUint16(p+30,true), clen=dv.getUint16(p+32,true);
+    const lho=dv.getUint32(p+42,true);
+    const name=dec.decode(buf.subarray(p+46,p+46+nlen));
+    const start = lho + 30 + dv.getUint16(lho+26,true) + dv.getUint16(lho+28,true);
+    out[name] = { method, data: buf.subarray(start, start+csize) };
+    p += 46 + nlen + elen + clen;
+  }
+  return out;
+}
+async function inflate(entry){
+  if (entry.method === 0) return entry.data;
+  if (typeof DecompressionStream === 'undefined') throw new Error('브라우저가 압축 해제를 지원하지 않음');
+  const st = new Blob([entry.data]).stream().pipeThrough(new DecompressionStream('deflate-raw'));
+  return new Uint8Array(await new Response(st).arrayBuffer());
+}
+
+const BUILTIN_DATE_FMT = [14,15,16,17,18,19,20,21,22,27,28,29,30,31,32,33,34,35,36,45,46,47,50,51,52,53,54,55,56,57,58];
+
+async function readXlsx(file){
+  const zip = await unzip(new Uint8Array(await file.arrayBuffer()));
+  const dec = new TextDecoder('utf-8');
+  const get = async n => zip[n] ? dec.decode(await inflate(zip[n])) : '';
+
+  const shared = [];
+  (await get('xl/sharedStrings.xml')).replace(/<si>([\s\S]*?)<\/si>/g, (m, inner)=>{
+    let s=''; inner.replace(/<t[^>]*>([\s\S]*?)<\/t>/g,(m2,t)=>{ s+=t; return ''; });
+    shared.push(unxml(s)); return '';
+  });
+
+  const stXml = await get('xl/styles.xml'), custom = {}, xfs = [];
+  stXml.replace(/<numFmt[^>]*numFmtId="(\d+)"[^>]*formatCode="([^"]*)"/g,(m,id,code)=>{ custom[+id]=unxml(code); return ''; });
+  const cx = stXml.match(/<cellXfs[\s\S]*?<\/cellXfs>/);
+  if (cx) cx[0].replace(/<xf[^>]*numFmtId="(\d+)"/g,(m,id)=>{ xfs.push(+id); return ''; });
+  const isDateStyle = s => {
+    const id = xfs[s];
+    if (id == null) return false;
+    if (BUILTIN_DATE_FMT.indexOf(id) >= 0) return true;
+    const c = custom[id];
+    return !!(c && /[ymd]/i.test(c) && !/[#]/.test(c));
+  };
+
+  const sheets = Object.keys(zip).filter(n=>/^xl\/worksheets\/sheet\d+\.xml$/.test(n))
+                       .sort((a,b)=> (+a.match(/\d+/)[0]) - (+b.match(/\d+/)[0]));
+  const rows = [];
+  for (const sn of sheets){
+    (await get(sn)).replace(/<row[^>]*>([\s\S]*?)<\/row>/g, (m, inner)=>{
+      const cells = [];
+      inner.replace(/<c\b([^>]*?)\/>|<c\b([^>]*?)>([\s\S]*?)<\/c>/g, (m2, a1, a2, body)=>{
+        const attr = a1 || a2 || '';
+        const ref = (attr.match(/r="([A-Z]+)\d+"/)||[])[1];
+        const col = ref ? colIdx(ref) : cells.length;
+        const t = (attr.match(/t="([^"]+)"/)||[])[1] || 'n';
+        const sm = attr.match(/s="(\d+)"/);
+        let v = '';
+        if (body){
+          if (t === 'inlineStr'){ body.replace(/<t[^>]*>([\s\S]*?)<\/t>/g,(m3,x)=>{ v+=x; return ''; }); v = unxml(v); }
+          else { const vm = body.match(/<v>([\s\S]*?)<\/v>/); if (vm) v = unxml(vm[1]); }
+        }
+        if (t === 's') v = shared[+v] != null ? shared[+v] : '';
+        else if ((t === 'n' || t === '') && v !== '' && sm && isDateStyle(+sm[1]) && !isNaN(+v)) v = serialToYmd(+v);
+        cells[col] = v;
+        return '';
+      });
+      for (let i=0;i<cells.length;i++) if (cells[i]==null) cells[i]='';
+      rows.push(cells);
+      return '';
+    });
+  }
+  return rows;
+}
+
+/* ══════════════════════════════════════════════════
+   1-E. 한글 문서에서 글자 뽑기 (.hwpx / .hwp)
+   ══════════════════════════════════════════════════ */
+
+/* hwpx 는 xlsx 처럼 압축된 XML 묶음이다 */
+async function readHwpx(file){
+  const zip = await unzip(new Uint8Array(await file.arrayBuffer()));
+  const names = Object.keys(zip).filter(n=>/^Contents\/section\d+\.xml$/i.test(n))
+                      .sort((a,b)=> (+a.match(/\d+/)[0]) - (+b.match(/\d+/)[0]));
+  if (!names.length) throw new Error('hwpx 안에서 본문을 찾지 못했습니다');
+  const dec = new TextDecoder('utf-8');
+  let out = '';
+  for (const n of names){
+    const xml = dec.decode(await inflate(zip[n]));
+    /* 문단(hp:p) 단위로 줄을 나누고, 글자(hp:t)만 이어붙인다 */
+    xml.replace(/<hp:p\b[\s\S]*?<\/hp:p>|<hp:p\b[^>]*\/>/g, (para)=>{
+      let line = '';
+      para.replace(/<hp:t(?:\s[^>]*)?>([\s\S]*?)<\/hp:t>/g, (m, t)=>{ line += unxml(t); return ''; });
+      if (para.indexOf('<hp:tab') >= 0 && line) line += '\t';
+      out += line + '\n';
+      return '';
+    });
+  }
+  return out.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* ── .hwp 는 이진 복합문서(CFB) 안에 압축된 기록이 들어 있다 ── */
+function cfbRead(buf){
+  const dv = new DataView(buf.buffer, buf.byteOffset, buf.byteLength);
+  if (dv.getUint32(0,true) !== 0xE011CFD0 || dv.getUint32(4,true) !== 0xE11AB1A1)
+    throw new Error('한글 파일 형식이 아닙니다');
+  const ssz = 1 << dv.getUint16(30,true), msz = 1 << dv.getUint16(32,true);
+  const cutoff = dv.getUint32(56,true);
+  const off = s => (s+1)*ssz;
+
+  /* FAT 목록(DIFAT) 모으기 */
+  const difat = [];
+  for (let i=0;i<109;i++){ const v = dv.getUint32(76+i*4,true); if (v <= 0xFFFFFFFA) difat.push(v); }
+  let ds = dv.getUint32(68,true), guard = 0;
+  while (ds <= 0xFFFFFFFA && guard++ < 4096){
+    const base = off(ds), n = (ssz>>2) - 1;
+    for (let i=0;i<n;i++){ const v = dv.getUint32(base+i*4,true); if (v <= 0xFFFFFFFA) difat.push(v); }
+    ds = dv.getUint32(base + n*4, true);
+  }
+  const fat = [];
+  for (const s of difat){ const b = off(s); for (let i=0;i<(ssz>>2);i++) fat.push(dv.getUint32(b+i*4,true)); }
+
+  const chain = (start, mini) => {
+    const out = []; let s = start, g = 0;
+    while (s <= 0xFFFFFFFA && g++ < 1<<20){ out.push(s); s = mini ? miniFat[s] : fat[s]; }
+    return out;
+  };
+  const readSectors = (list, size) => {
+    const out = new Uint8Array(size); let p = 0;
+    for (const s of list){
+      const n = Math.min(ssz, size - p);
+      if (n <= 0) break;
+      out.set(buf.subarray(off(s), off(s)+n), p); p += n;
+    }
+    return out;
+  };
+
+  /* 디렉터리에서 스트림 찾기 */
+  const dirSectors = chain(dv.getUint32(48,true), false);
+  const entries = [];
+  for (const s of dirSectors){
+    for (let i=0;i<ssz;i+=128){
+      const b = off(s)+i;
+      const nlen = dv.getUint16(b+64,true);
+      if (!nlen) continue;
+      let nm = '';
+      for (let k=0;k<nlen-2;k+=2) nm += String.fromCharCode(dv.getUint16(b+k,true));
+      entries.push({ name:nm, type:dv.getUint8(b+66), start:dv.getUint32(b+116,true), size:dv.getUint32(b+120,true) });
+    }
+  }
+  const root = entries.find(e=>e.type===5);
+  let miniFat = [], miniStream = null;
+  if (root && root.size){
+    const mf = chain(dv.getUint32(60,true), false);
+    for (const s of mf){ const b = off(s); for (let i=0;i<(ssz>>2);i++) miniFat.push(dv.getUint32(b+i*4,true)); }
+    miniStream = readSectors(chain(root.start,false), root.size);
+  }
+  const get = name => {
+    const e = entries.find(x=>x.name===name && x.type===2);
+    if (!e || !e.size) return null;
+    if (e.size >= cutoff) return readSectors(chain(e.start,false), e.size);
+    const out = new Uint8Array(e.size); let p = 0;
+    for (const s of chain(e.start,true)){
+      const n = Math.min(msz, e.size-p);
+      if (n<=0) break;
+      out.set(miniStream.subarray(s*msz, s*msz+n), p); p += n;
+    }
+    return out;
+  };
+  return { get, names: entries.filter(e=>e.type===2).map(e=>e.name) };
+}
+
+/* 문단 기록에서 글자만 골라낸다 */
+function hwpRecords(data){
+  let out = '', p = 0;
+  const dv = new DataView(data.buffer, data.byteOffset, data.byteLength);
+  while (p + 4 <= data.length){
+    const h = dv.getUint32(p,true);
+    const tag = h & 0x3FF;
+    let size = (h >> 20) & 0xFFF;
+    p += 4;
+    if (size === 0xFFF){ size = dv.getUint32(p,true); p += 4; }
+    if (p + size > data.length) break;
+    if (tag === 67){                                  /* HWPTAG_PARA_TEXT */
+      let line = '';
+      for (let i=0;i+1<size;i+=2){
+        const c = dv.getUint16(p+i,true);
+        if (c === 9){ line += '\t'; i += 14; }        /* 탭 — 8글자를 차지한다 */
+        else if (c === 10 || c === 13) line += '\n';
+        else if (c < 32){
+          if ([1,2,3,11,12,14,15,16,17,18,21,22,23,4,5,6,7,8,19,20].indexOf(c) >= 0) i += 14;
+        }
+        else line += String.fromCharCode(c);
+      }
+      out += line + '\n';
+    }
+    p += size;
+  }
+  return out;
+}
+
+async function readHwp(file){
+  const buf = new Uint8Array(await file.arrayBuffer());
+  const cfb = cfbRead(buf);
+  const fh = cfb.get('FileHeader');
+  if (!fh) throw new Error('한글 파일 머리말을 찾지 못했습니다');
+  const flags = new DataView(fh.buffer, fh.byteOffset, fh.byteLength).getUint32(36, true);
+  if (flags & 2) throw new Error('암호가 걸린 한글 파일입니다');
+  const compressed = !!(flags & 1);
+  const secs = cfb.names.filter(n=>/^Section\d+$/.test(n))
+                        .sort((a,b)=>(+a.slice(7))-(+b.slice(7)));
+  if (!secs.length) throw new Error('본문을 찾지 못했습니다');
+  let out = '';
+  for (const n of secs){
+    let d = cfb.get(n);
+    if (!d) continue;
+    if (compressed){
+      try { d = await inflateWith(d, 'deflate-raw'); }
+      catch(e){ try { d = await inflateWith(d, 'deflate'); } catch(e2){ continue; } }
+    }
+    out += hwpRecords(d);
+  }
+  return out.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
+}
+
+/* 행정망 CSV는 CP949인 경우가 많아 두 번 시도한다 */
+async function readTextFile(f){
+  const buf = new Uint8Array(await f.arrayBuffer());
+  let s = new TextDecoder('utf-8').decode(buf);
+  if (s.indexOf('\uFFFD') >= 0){
+    try { const s2 = new TextDecoder('euc-kr').decode(buf); if (s2.indexOf('\uFFFD') < 0) s = s2; } catch(e){}
+  }
+  return s.replace(/^\uFEFF/,'');
+}
+
+function setSrcInfo(msg){
+  document.getElementById('srcInfo').innerHTML = msg ? `<div class="srcbadge">${esc(msg)}</div>` : '';
+}
+
+/* 글자층이 없는 PDF(스캔본) */
+function showScanned(name){
+  document.getElementById('imgWrap').innerHTML = `
+    <div class="warnbox">
+      <b>「${esc(name)}」 에서 글자를 찾지 못했습니다.</b> 종이를 스캔하거나 사진으로 만든 PDF라 글자가 아니라 <b>그림</b>으로 들어 있습니다. 이런 PDF는 이 도구가 읽을 수 없습니다.<br>
+      · <b>PDF를 화면에 띄우고</b> 글자를 드래그해 보세요. 선택이 되면 <b>Ctrl+A → Ctrl+C</b> 후 아래 칸에 붙여넣으면 됩니다.<br>
+      · 선택이 안 되면 <b>윈도우 11 캡처도구</b>로 찍은 뒤 <b>[텍스트 조치] → [모든 텍스트 복사]</b><br>
+      · 그것도 어려우면 날짜와 제목만 직접 적어도 인식합니다 (예: <code>8. 20.(목) 실적보고서 제출</code>)
+      <div style="margin-top:8px"><button class="ghost sm" onclick="document.getElementById('imgWrap').innerHTML=''">닫기</button></div>
+    </div>`;
+  document.getElementById('raw').focus();
+}
+
+function showImage(file){
+  const url = URL.createObjectURL(file);
+  document.getElementById('imgWrap').innerHTML = `
+    <div class="imgbox">
+      <div class="cap"><b>불러온 이미지</b> ${esc(file.name||'붙여넣은 캡쳐')}
+        <button class="ghost sm" onclick="document.getElementById('imgWrap').innerHTML=''">닫기</button></div>
+      <img src="${url}" onclick="window.open(this.src)">
+    </div>
+    <div class="warnbox">
+      <b>이미지 속 글자는 이 도구가 직접 읽지 못합니다.</b> 인터넷이 끊긴 PC에서 쓰는 단일 파일이라 글자 인식 기능을 넣을 수 없습니다. 대신 아래 방법이 훨씬 빠르고 정확합니다.<br>
+      · <b>윈도우 11</b> — 캡처도구로 찍은 뒤 <b>[텍스트 조치] → [모든 텍스트 복사]</b> 후 아래 칸에 붙여넣기<br>
+      · <b>한글·엑셀·메일 화면이라면</b> 캡쳐하지 말고 원본에서 <b>Ctrl+A → Ctrl+C</b> 로 복사해 붙여넣기<br>
+      · 그래도 어려우면 이미지를 보면서 아래 칸에 날짜와 제목만 적어도 인식합니다 (예: <code>8. 20.(목) 실적보고서 제출</code>)
+    </div>`;
+  setSrcInfo('');
+  document.getElementById('raw').focus();
+}
+
+async function handleFiles(files){
+  const f = files && files[0];
+  if (!f) return;
+  const name = (f.name||'').toLowerCase();
+  try{
+    if ((f.type||'').indexOf('image/') === 0){ showImage(f); return; }
+    if (/\.pdf$/.test(name)){
+      setSrcInfo('PDF에서 글자를 뽑는 중…');
+      const txt = await pdfToText(new Uint8Array(await f.arrayBuffer()));
+      if (!txt || (txt.match(/[가-힣0-9]/g)||[]).length < 10){
+        setSrcInfo('');
+        showScanned(f.name);
+        return;
+      }
+      document.getElementById('raw').value = txt;
+      setSrcInfo(`PDF 「${f.name}」 에서 글자를 읽었습니다`);
+      runParse();
+      return;
+    }
+    if (/\.hwpx$/.test(name) || /\.hwp$/.test(name)){
+      setSrcInfo('한글 문서를 읽는 중…');
+      const txt = /\.hwpx$/.test(name) ? await readHwpx(f) : await readHwp(f);
+      if (!txt || (txt.match(/[가-힣0-9]/g)||[]).length < 5) throw new Error('빈 문서');
+      document.getElementById('raw').value = txt;
+      setSrcInfo(`한글 「${f.name}」 을 읽었습니다`);
+      runParse();
+      return;
+    }
+    if (/\.xlsx$|\.xlsm$/.test(name)){
+      setSrcInfo('엑셀 파일을 읽는 중…');
+      const rows = await readXlsx(f);
+      if (!rows.length) throw new Error('빈 표');
+      document.getElementById('raw').value = rows.map(r=>r.join('\t')).join('\n');
+      setSrcInfo(`엑셀 「${f.name}」 ${rows.length}행을 읽었습니다`);
+      runParse();
+    } else if (/\.xls$/.test(name)){
+      toast('구형 .xls는 못 읽습니다. 엑셀에서 표를 복사해 붙여넣어 주세요');
+    } else if (/\.csv$|\.tsv$/.test(name)){
+      const txt = await readTextFile(f);
+      const rows = /\.tsv$/.test(name) ? txt.split(/\r?\n/).map(l=>l.split('\t')) : parseCSV(txt);
+      document.getElementById('raw').value = rows.map(r=>r.join('\t')).join('\n');
+      setSrcInfo(`「${f.name}」 ${rows.length}행을 읽었습니다`);
+      runParse();
+    } else {
+      const txt = await readTextFile(f);
+      document.getElementById('raw').value = txt;
+      setSrcInfo(`「${f.name}」 을 읽었습니다`);
+      runParse();
+    }
+  } catch(err){
+    setSrcInfo('');
+    toast('파일을 읽지 못했습니다 — 내용을 복사해 붙여넣어 주세요');
+  }
+}
+
+/* 드래그&드롭 · 이미지 붙여넣기 */
+(function bindInput(){
+  const dz = document.getElementById('drop');
+  ['dragenter','dragover'].forEach(t => document.addEventListener(t, e=>{
+    if (!e.dataTransfer || document.getElementById('tab-in').hidden) return;
+    e.preventDefault(); dz.classList.add('on');
+  }));
+  ['dragleave','drop'].forEach(t => document.addEventListener(t, e=>{
+    if (t==='drop' && e.dataTransfer && !document.getElementById('tab-in').hidden){
+      e.preventDefault(); handleFiles(e.dataTransfer.files);
+    }
+    dz.classList.remove('on');
+  }));
+  document.addEventListener('paste', e=>{
+    if (document.getElementById('tab-in').hidden || !e.clipboardData) return;
+    const items = e.clipboardData.items || [];
+    for (const it of items){
+      if (it.type && it.type.indexOf('image/') === 0){
+        const f = it.getAsFile();
+        if (f){ e.preventDefault(); showImage(f); }
+        return;
+      }
+    }
+    /* 글을 붙여넣으면 어디에 붙여넣든 받아서 바로 읽는다 */
+    const raw = document.getElementById('raw');
+    const txt = e.clipboardData.getData('text');
+    if (txt && document.activeElement !== raw){ e.preventDefault(); raw.value = txt; }
+    setSrcInfo('붙여넣은 내용');
+    setTimeout(()=>{ if (document.getElementById('raw').value.trim()) runParse(); }, 20);
+  });
+})();
+
+/* ══════════════════════════════════════════════════
+   2. 추출 결과 화면
+   ══════════════════════════════════════════════════ */
+let PICKED = [];
+
+function runParse(){
+  const txt = document.getElementById('raw').value;
+  if (!txt.trim()){ toast('내용을 붙여넣거나 파일을 올려주세요'); return; }
+  PICKED = parseAny(txt);
+  renderPicked();
+  toast(PICKED.length ? PICKED.length+'건을 찾았습니다'
+                      : '날짜를 찾지 못했습니다. 직접 추가를 이용하세요');
+}
+
+const mdDow = d => `${+d.slice(5,7)}/${+d.slice(8,10)}(${dowOf(d)})`;
+
+function renderPicked(){
+  const box = document.getElementById('picked');
+  document.getElementById('resultPanel').hidden = PICKED.length===0;
+  renderContactBar();
+  box.innerHTML = PICKED.map((e,i) => {
+    const due = dueOf(e);
+    const sub = [];
+    if (due) sub.push(`<span class="due">📥 ${mdDow(due)}까지 받기</span>` +
+                      (e.people.length ? ` · ${e.people.length}명` : ' · <b>명단 없음</b>'));
+    if (e.place) sub.push('📍 '+esc(e.place));
+    return `<div class="pick ${e.on?'':'off'}" onclick="togglePick(event,${i})">
+      <input type="checkbox" ${e.on?'checked':''} onclick="event.stopPropagation()" onchange="PICKED[${i}].on=this.checked;renderPicked()">
+      <div class="pmain">
+        <div class="p1">
+          <span class="pdate">${mdDow(e.start)}${e.end!==e.start?'~'+mdDow(e.end):''}${e.time?' '+esc(e.time):''}</span>
+          <span class="kind ${e.kind}">${e.kind==='collect'?'받아야 함':'내가 처리'}</span>
+          <span class="cat" style="background:var(--c-${catVar(e.cat)}-s);color:var(--c-${catVar(e.cat)})">${esc(e.cat)}</span>
+          <span class="ptitle">${esc(e.title)}</span>
+        </div>
+        ${sub.length?`<div class="p2">${sub.join(' · ')}</div>`:''}
+      </div>
+      <button class="ghost sm fix" onclick="event.stopPropagation();openEdit(null,${i})">고치기</button>
+    </div>`;
+  }).join('');
+
+  const n = PICKED.filter(e=>e.on).length;
+  document.getElementById('pickCount').textContent = PICKED.length ? `— ${PICKED.length}건 중 ${n}건 선택` : '';
+  const btn = document.getElementById('commitBtn');
+  if (btn){ btn.textContent = n ? `일정표에 ${n}건 등록 →` : '등록할 일정을 선택하세요'; btn.disabled = !n; }
+}
+function togglePick(ev, i){ PICKED[i].on = !PICKED[i].on; renderPicked(); }
+
+function toggleAll(v){ PICKED.forEach(e=>e.on=v); renderPicked(); }
+
+/* 제출처 — 평소엔 한 줄, 누르면 고칠 수 있게 */
+let contactOpen = false;
+function renderContactBar(){
+  const bar = document.getElementById('contactBar');
+  if (!bar) return;
+  const c = LAST_CONTACT;
+  if (contactOpen){
+    bar.innerHTML = `<span class="lbl">제출처</span>
+      <input id="c_org" value="${esc(c.org)}" oninput="applyContact()" placeholder="부서" style="flex:1.3;min-width:120px">
+      <input id="c_name" value="${esc(c.name)}" oninput="applyContact()" placeholder="담당자" style="flex:.7;min-width:80px">
+      <input id="c_tel" value="${esc(c.tel)}" oninput="applyContact()" placeholder="전화" style="flex:1;min-width:110px">
+      <input id="c_email" value="${esc(c.email)}" oninput="applyContact()" placeholder="이메일(선택)" style="flex:1.2;min-width:120px">
+      <button class="ghost sm" onclick="contactOpen=false;renderContactBar()">완료</button>`;
+    return;
+  }
+  const who = [c.org, c.name].filter(Boolean).join(' ');
+  bar.innerHTML = `<span class="lbl">제출처</span>
+    <span style="flex:1">${who ? '📤 '+esc(who) : '<span style="color:var(--sub)">공문에서 찾지 못했습니다</span>'}`
+    + (c.tel ? ` <b>☎ ${esc(c.tel)}</b>` : '') + `</span>
+    <button class="ghost sm" onclick="contactOpen=true;renderContactBar()">고치기</button>`;
+}
+
+function applyContact(){
+  const g = id => { const el=document.getElementById(id); return el ? el.value.trim() : ''; };
+  const c = { org:g('c_org'), name:g('c_name'), tel:g('c_tel'), email:g('c_email') };
+  LAST_CONTACT = c;
+  PICKED.forEach(e => { e.cOrg=c.org; e.cName=c.name; e.cTel=c.tel; e.cEmail=c.email; });
+}
+
+/* 오프라인에서도 되는 복사 */
+function copyText(t, label){
+  try{
+    const ta = document.createElement('textarea');
+    ta.value = t; ta.style.position='fixed'; ta.style.opacity='0';
+    document.body.appendChild(ta); ta.select();
+    document.execCommand('copy'); ta.remove();
+    toast(label || ('복사했습니다 — ' + t));
+  }catch(e){ toast('복사하지 못했습니다: ' + t); }
+}
+
+/* 제출처 한 줄 표시 */
+function contactHTML(e){
+  if (!e.cOrg && !e.cName && !e.cTel) return '';
+  const who = [e.cOrg, e.cName].filter(Boolean).join(' ');
+  return `<div style="color:var(--sub);font-size:12px;margin-top:2px">📤 ${esc(who || '제출처')}`
+       + (e.cTel ? ` <button class="pchip" style="cursor:copy" onclick="event.stopPropagation();copyText('${esc(e.cTel)}')" title="클릭하면 복사">☎ ${esc(e.cTel)}</button>` : '')
+       + `</div>`;
+}
+
+function commitPicked(){
+  const add = PICKED.filter(e=>e.on);
+  if (!add.length){ toast('선택된 일정이 없습니다'); return; }
+  let dup=0;
+  add.forEach(e => {
+    if (DB.some(x=>x.start===e.start && x.time===e.time && x.title===e.title)){ dup++; return; }
+    const { on, ...rest } = e;
+    DB.push(touch({ ...rest, id:uid(), created:todayStr() }));
+  });
+  save();
+  PICKED = PICKED.filter(e=>!e.on);
+  renderPicked(); renderAll();
+  toast(`일정표에 ${add.length-dup}건 등록했습니다${dup?` · 중복 ${dup}건 제외`:''}`);
+  showTab('cal');
+  window.scrollTo(0,0);
+}
+
+function loadSample(){
+  document.getElementById('raw').value =
+`제목: 2026년 제3차 도시계획위원회 개최 및 안건 제출 알림
+
+1. 관련: 도시계획과-1234(2026. 7. 20.)
+2. 위 호와 관련하여 아래와 같이 회의를 개최하오니 참석하여 주시기 바랍니다.
+  가. 일시: 2026. 8. 5.(수) 14:00 ~ 16:00
+  나. 장소: 군청 3층 대회의실
+3. 각 팀별 심의 안건 제출기한: 2026. 7. 31.(금)까지
+4. 사전 실무협의회는 7. 29.(수) 오후 3시에 실시합니다.
+5. 기타
+  가. 도시재생 현장점검: 2026. 8. 12.(수) ~ 8. 13.(목)
+  나. 신규 담당자 직무교육: 2026년 9월 3일 09:30
+  다. 하반기 업무추진실적 담당자별 작성 후 제출: 2026. 8. 20.(목)`;
+  runParse();
+}
+
+/* ══════════════════════════════════════════════════
+   3. 캘린더
+   ══════════════════════════════════════════════════ */
+let curY, curM;
+(function(){ const t=new Date(); curY=t.getFullYear(); curM=t.getMonth()+1; })();
+
+const eventsOn = ds => DB.filter(e => ds>=e.start && ds<=(e.end||e.start))
+                        .sort((a,b)=>(a.time||'99').localeCompare(b.time||'99'));
+const duesOn   = ds => DB.filter(e => dueOf(e) === ds);
+
+function renderCal(){
+  document.getElementById('calTitle').textContent = `${curY}년 ${curM}월`;
+  const startIdx = new Date(curY, curM-1, 1).getDay();
+  const lastDay  = new Date(curY, curM, 0).getDate();
+  const prevLast = new Date(curY, curM-1, 0).getDate();
+  const today = todayStr();
+  let html='', cell=0;
+
+  for (let w=0; w<6; w++){
+    let row='';
+    for (let d=0; d<7; d++, cell++){
+      const off = cell-startIdx+1;
+      let y=curY, m=curM, day=off, other=false;
+      if (off<1){ day=prevLast+off; m=curM-1; if(m<1){m=12;y--;} other=true; }
+      else if (off>lastDay){ day=off-lastDay; m=curM+1; if(m>12){m=1;y++;} other=true; }
+      const ds = ymd(y,m,day);
+      const cls = [other?'other':'', ds===today?'today':''].filter(Boolean).join(' ');
+      const dcls = d===0?'sun':(d===6?'sat':'');
+      const dueChips = duesOn(ds).map(e=>{
+        const n=doneCount(e), t=(e.people||[]).length;
+        return `<button class="ev due" onclick="openEdit('${e.id}')" title="회신기한 · ${esc(e.title)}"><span class="t">📥</span>${esc(e.title)}${t?` (${n}/${t})`:''}</button>`;
+      }).join('');
+      const evChips = eventsOn(ds).map(e=>
+        `<button class="ev ${e.done?'done':''}" style="background:var(--c-${catVar(e.cat)}-s);color:var(--c-${catVar(e.cat)})" onclick="openEdit('${e.id}')" title="${esc(e.title)}${e.place?' · '+esc(e.place):''}">${e.time?'<span class="t">'+esc(e.time)+'</span>':''}${esc(e.title)}</button>`
+      ).join('');
+      row += `<td class="${cls}"><div class="dnum ${dcls}">${day}</div>${dueChips}${evChips}</td>`;
+    }
+    html += `<tr>${row}</tr>`;
+    if (cell-startIdx+1 > lastDay) break;
+  }
+  document.getElementById('calBody').innerHTML = html;
+  document.getElementById('legend').innerHTML =
+    CATS.map(c=>`<span class="cat" style="background:var(--c-${catVar(c)}-s);color:var(--c-${catVar(c)})">${c}</span>`).join('');
+}
+function moveMonth(n){ curM+=n; if(curM<1){curM=12;curY--;} if(curM>12){curM=1;curY++;} renderCal(); }
+function goToday(){ const t=new Date(); curY=t.getFullYear(); curM=t.getMonth()+1; renderCal(); }
+
+/* 회신기한 + 본 일정을 하나의 타임라인으로 */
+function timelineRows(fromDays){
+  const t = todayStr(), rows = [];
+  DB.forEach(e => {
+    if (e.done) return;                       /* 완료 표시한 건은 빠진다 */
+    const due = dueOf(e);
+    if (due && due>=t && diffDays(t,due)<=fromDays && doneCount(e) < (e.people||[]).length)
+      rows.push({ d:due, type:'due', e });
+    if ((e.end||e.start)>=t && diffDays(t,e.start)<=fromDays)
+      rows.push({ d:e.start, type:'ev', e });
+  });
+  rows.sort((a,b)=> a.d===b.d ? (a.type==='due'?-1:1) : a.d.localeCompare(b.d));
+  return rows;
+}
+
+function renderUpcoming(){
+  const rows = timelineRows(14);
+  if (isNarrow()){
+    const seen = new Set(), uniq = [];
+    for (const r of rows) if (!seen.has(r.e.id)){ seen.add(r.e.id); uniq.push(r.e); }
+    document.getElementById('upcoming').innerHTML = uniq.length ? cardsHTML(uniq)
+      : '<div class="empty">2주 안에 손댈 일이 없습니다.</div>';
+    return;
+  }
+  document.getElementById('upcoming').innerHTML = rows.length ? `
+    <div class="tblwrap"><table class="list"><thead><tr>
+      <th style="width:120px">일자</th><th style="width:62px">D-day</th>
+      <th style="width:112px">구분</th><th>내용</th><th style="width:230px">취합 현황</th>
+    </tr></thead><tbody>` +
+    rows.map(r => {
+      const e=r.e, isDue=r.type==='due';
+      return `<tr>
+        <td>${esc(r.d)}(${dowOf(r.d)})${!isDue&&e.time?'<br><span style="color:var(--sub)">'+esc(e.time)+'</span>':''}</td>
+        <td>${ddayHTML(r.d)}</td>
+        <td>${isDue ? '<span class="kind collect">📥 회신기한</span>'
+                    : `<span class="cat" style="background:var(--c-${catVar(e.cat)}-s);color:var(--c-${catVar(e.cat)})">${esc(e.cat)}</span>`}</td>
+        <td><b>${esc(e.title)}</b>${isDue?`<br><span style="color:var(--sub);font-size:12px">본 마감 ${esc(e.start)}(${dowOf(e.start)})</span>`
+                                          :(e.place?'<br><span style="color:var(--sub);font-size:12px">'+esc(e.place)+'</span>':'')}
+          <button class="ghost sm noprint" style="margin-left:6px" onclick="openEdit('${e.id}')">수정</button>
+          ${contactHTML(e)}</td>
+        <td>${e.kind==='collect'?peopleHTML(e):'<span style="color:var(--sub)">—</span>'}</td>
+      </tr>`;
+    }).join('') + '</tbody></table></div>'
+    : '<div class="empty">2주 안에 손댈 일이 없습니다.<br><span style="font-size:12.5px">더 뒤의 일정은 ③ 전체 대장에서 볼 수 있습니다.</span></div>';
+}
+
+/* ══════════════════════════════════════════════════
+   4. 목록
+   ══════════════════════════════════════════════════ */
+function ddayHTML(dstr){
+  const t=todayStr(), n=diffDays(t,dstr);
+  if (n<0) return `<span class="dday past">D+${-n}</span>`;
+  if (n===0) return '<span class="dday soon">D-DAY</span>';
+  return `<span class="dday ${n<=2?'soon':(n<=7?'near':'')}">D-${n}</span>`;
+}
+
+/* 낸 사람은 접어두고 안 낸 쪽만 보여준다 — 명단이 길어도 갈수록 짧아진다 */
+const OPEN_DONE = new Set();
+function peopleHTML(e){
+  const ppl = e.people||[];
+  if (!ppl.length) return '<span style="color:var(--sub);font-size:12px">대상 미지정</span>';
+  const left = [], done = [];
+  ppl.forEach((p,i)=>(p.ok?done:left).push({ p, i }));
+  const chip = (x, cls) => `<span class="pchip ${cls}" onclick="togglePerson('${e.id}',${x.i})" title="${cls?'되돌리기':'제출 완료로 표시'}">${esc(x.p.n)}</span>`;
+  const head = `<span class="prog ${left.length?'':'full'}">${done.length}/${ppl.length}</span> `;
+  if (!left.length)
+    return head + '<span style="color:var(--ok);font-weight:700;font-size:12px">전부 받음 ✓</span> ' +
+      (OPEN_DONE.has(e.id) ? done.map(x=>chip(x,'ok')).join('')
+                           : `<button class="pchip" onclick="OPEN_DONE.add('${e.id}');renderAll()">펼치기</button>`);
+  return head +
+    `<span style="font-size:11.5px;color:var(--sub)">아직 안 냄</span> ` +
+    left.map(x=>chip(x,'')).join('') +
+    (done.length
+      ? (OPEN_DONE.has(e.id)
+          ? ` <span style="font-size:11.5px;color:var(--sub)">낸 곳</span> ` + done.map(x=>chip(x,'ok')).join('') +
+            ` <button class="pchip" onclick="OPEN_DONE.delete('${e.id}');renderAll()">접기</button>`
+          : ` <button class="pchip" onclick="OPEN_DONE.add('${e.id}');renderAll()">낸 곳 ${done.length} 보기</button>`)
+      : '');
+}
+function togglePerson(id, i){
+  const e = DB.find(x=>x.id===id); if (!e || !e.people[i]) return;
+  e.people[i].ok = !e.people[i].ok; touch(e);
+  if (e.people.every(p=>p.ok)) toast('전부 받았습니다 — '+e.title);
+  save(); renderAll();
+}
+
+function listTable(rows){
+  return `<div class="tblwrap"><table class="list"><thead><tr>
+    <th style="width:32px"></th><th style="width:132px">일자</th><th style="width:70px">시각</th>
+    <th style="width:60px">D-day</th><th style="width:100px">구분</th><th>제목</th>
+    <th style="width:240px">취합 현황 / 회신기한</th><th style="width:60px" class="noprint"></th>
+  </tr></thead><tbody>` +
+  rows.map(e => {
+    const due = dueOf(e);
+    return `<tr class="${e.done?'done':''}">
+      <td><input type="checkbox" ${e.done?'checked':''} onchange="toggleDone('${e.id}',this.checked)" title="완료"></td>
+      <td>${esc(e.start)}(${dowOf(e.start)})${(e.end&&e.end!==e.start)?'<br><span style="color:var(--sub)">~ '+esc(e.end)+'('+dowOf(e.end)+')</span>':''}</td>
+      <td>${e.time?esc(e.time)+(e.etime?'<br>~'+esc(e.etime):''):'<span style="color:var(--sub)">종일</span>'}</td>
+      <td>${ddayHTML(e.start)}</td>
+      <td><span class="kind ${e.kind}">${e.kind==='collect'?'취합':'내 업무'}</span><br>
+          <span class="cat" style="background:var(--c-${catVar(e.cat)}-s);color:var(--c-${catVar(e.cat)});margin-top:3px">${esc(e.cat)}</span></td>
+      <td><b>${esc(e.title)}</b>
+        ${e.place?'<br><span style="color:var(--sub);font-size:12px">📍 '+esc(e.place)+'</span>':''}
+        ${e.doc&&e.doc!==e.title?'<br><span style="color:var(--sub);font-size:12px">'+esc(e.doc)+'</span>':''}
+        ${e.memo?'<br><span style="color:var(--sub);font-size:12px">'+esc(e.memo)+'</span>':''}
+        ${contactHTML(e)}</td>
+      <td>${due?`<div style="font-size:12px;color:var(--warn);font-weight:700;margin-bottom:3px">📥 ${esc(due)}(${dowOf(due)}) ${ddayHTML(due)}</div>`:''}
+          ${e.kind==='collect'?peopleHTML(e):'<span style="color:var(--sub)">—</span>'}</td>
+      <td class="noprint"><button class="ghost sm" onclick="openEdit('${e.id}')">수정</button></td>
+    </tr>`;
+  }).join('') + '</tbody></table></div>';
+}
+
+/* ══════════════════════════════════════════════════
+   4-B. 유형 · 구글 캘린더 · 공유
+   ══════════════════════════════════════════════════ */
+const TYPES = [
+  { k:'',        label:'전체',        test: () => true },
+  { k:'submit',  label:'공문 제출·보고', test: e => e.cat==='제출·마감' || e.cat==='보고' },
+  { k:'meet',    label:'회의·행사 참석', test: e => ['회의','교육','행사'].indexOf(e.cat) >= 0 },
+  { k:'trip',    label:'출장·점검',    test: e => e.cat==='출장·점검' },
+  { k:'collect', label:'받아야 할 것',  test: e => e.kind==='collect' }
+];
+let TYPE = '';
+function setType(k){ TYPE = k; renderList(); }
+function renderChips(){
+  const el = document.getElementById('typeChips');
+  if (!el) return;
+  el.innerHTML = TYPES.map(t => {
+    const n = t.k ? DB.filter(e=>t.test(e)).length : DB.length;
+    return `<button class="chip ${TYPE===t.k?'on':''}" onclick="setType('${t.k}')">${t.label}${n?' '+n:''}</button>`;
+  }).join('');
+}
+
+/* 구글 캘린더 등록 링크 — 앱이 깔린 폰에서는 앱이 열린다 */
+function gcalUrl(e, due){
+  const pad0 = d => d.replace(/-/g,'');
+  let dates;
+  if (!due && e.time){
+    const endD = e.etime ? (e.end || e.start) : e.start;
+    const endT = e.etime || addHour(e.time);
+    dates = pad0(e.start)+'T'+e.time.replace(':','')+'00/'+pad0(endD)+'T'+endT.replace(':','')+'00';
+  } else {
+    const sD = due || e.start, eD = due || e.end || e.start;
+    const o = dateObj(eD); o.setDate(o.getDate()+1);
+    dates = pad0(sD)+'/'+pad0(ymd(o.getFullYear(), o.getMonth()+1, o.getDate()));
+  }
+  const who = [e.cOrg, e.cName].filter(Boolean).join(' ');
+  const det = [
+    due ? '팀에서 받아야 하는 기한입니다 (본 마감 '+e.start+')' : (e.kind==='collect' ? '취합 건' : ''),
+    e.doc && e.doc !== e.title ? e.doc : '', e.memo,
+    who ? '제출처 '+who : '', e.cTel ? '전화 '+e.cTel : '',
+    due && (e.people||[]).length ? '대상 '+e.people.map(p=>p.n).join(', ') : ''
+  ].filter(Boolean).join('\n');
+  return 'https://calendar.google.com/calendar/render?action=TEMPLATE&ctz=Asia/Seoul'
+       + '&text=' + encodeURIComponent((due ? '[받기] ' : '') + e.title)
+       + '&dates=' + dates
+       + (e.place && !due ? '&location=' + encodeURIComponent(e.place) : '')
+       + (det ? '&details=' + encodeURIComponent(det) : '');
+}
+function toGCal(id, due){
+  const e = DB.find(x=>x.id===id); if (!e) return;
+  const u = gcalUrl(e, due ? dueOf(e) : null);
+  const w = window.open(u, '_blank');
+  if (!w) copyText(u, '캘린더 주소를 복사했습니다 — 주소창에 붙여넣으세요');
+}
+
+/* 한 건 또는 여러 건을 글로 만들어 공유 */
+function eventText(e){
+  const due = dueOf(e), who = [e.cOrg, e.cName].filter(Boolean).join(' ');
+  const left = (e.people||[]).filter(p=>!p.ok).map(p=>p.n);
+  return `· ${mdDow(e.start)}${e.end&&e.end!==e.start?'~'+mdDow(e.end):''}${e.time?' '+e.time:''}  ${e.title}`
+    + (e.place ? `\n   장소 ${e.place}` : '')
+    + (due ? `\n   받기 ${mdDow(due)}까지` + (left.length ? ` · 아직 ${left.join(', ')}` : ' · 전부 받음') : '')
+    + (who || e.cTel ? `\n   제출처 ${who}${e.cTel ? ' ' + e.cTel : ''}` : '');
+}
+async function shareText(title, body){
+  const text = title + '\n\n' + body;
+  if (navigator.share){
+    try { await navigator.share({ title, text }); return; }
+    catch(err){ if (err && err.name === 'AbortError') return; }
+  }
+  copyText(text, '일정을 복사했습니다 — 붙여넣어 보내세요');
+}
+function shareOne(id){
+  const e = DB.find(x=>x.id===id); if (!e) return;
+  shareText('[일정] ' + e.title, eventText(e));
+}
+function shareCurrent(){
+  const rows = listRows();
+  if (!rows.length){ toast('공유할 일정이 없습니다'); return; }
+  const name = (TYPES.find(t=>t.k===TYPE)||TYPES[0]).label;
+  shareText(`[${name}] ${rows.length}건`, rows.map(eventText).join('\n'));
+}
+
+/* 좁은 화면에서는 표 대신 카드 */
+const isNarrow = () => window.matchMedia('(max-width:720px)').matches;
+function cardsHTML(rows){
+  return '<div class="elist">' + rows.map(e => {
+    const due = dueOf(e), c = catVar(e.cat);
+    return `<div class="ecard ${e.done?'done':''}" style="border-left-color:var(--c-${c})">
+      <div class="top">
+        <span class="when">${mdDow(e.start)}${e.end&&e.end!==e.start?'~'+mdDow(e.end):''}${e.time?' '+esc(e.time):''}</span>
+        ${ddayHTML(e.start)}
+        <span class="kind ${e.kind}">${e.kind==='collect'?'받아야 함':'내가 처리'}</span>
+        <span class="cat" style="background:var(--c-${c}-s);color:var(--c-${c})">${esc(e.cat)}</span>
+      </div>
+      <h4>${esc(e.title)}</h4>
+      <div class="meta">
+        ${e.place?'📍 '+esc(e.place)+'<br>':''}
+        ${due?`<b style="color:var(--warn)">📥 ${esc(due)}(${dowOf(due)})까지 받기</b><br>`:''}
+        ${e.kind==='collect'?peopleHTML(e)+'<br>':''}
+        ${contactHTML(e)}
+      </div>
+      <div class="acts noprint">
+        <button class="cal" onclick="toGCal('${e.id}',false)">캘린더에 넣기</button>
+        ${due?`<button class="cal" onclick="toGCal('${e.id}',true)">회신기한도</button>`:''}
+        <button class="shr" onclick="shareOne('${e.id}')">공유</button>
+        <button onclick="openEdit('${e.id}')">수정</button>
+        <button onclick="toggleDone('${e.id}',${!e.done})">${e.done?'완료 해제':'완료'}</button>
+      </div>
+    </div>`;
+  }).join('') + '</div>';
+}
+
+function listRows(){
+  const q=(document.getElementById('q').value||'').trim();
+  const fs=document.getElementById('fState').value;
+  const t=todayStr();
+  const ty=(TYPES.find(x=>x.k===TYPE)||TYPES[0]).test;
+  let rows=DB.filter(ty);
+  if (q)  rows=rows.filter(e=>((e.title||'')+' '+(e.place||'')+' '+(e.doc||'')+' '+(e.memo||'')
+                              +' '+(e.cOrg||'')+' '+(e.cName||'')+' '+(e.cTel||'')).includes(q));
+  if (fs==='future') rows=rows.filter(e=>(e.end||e.start)>=t);
+  if (fs==='past')   rows=rows.filter(e=>(e.end||e.start)<t);
+  rows.sort((a,b)=> fs==='past' ? (b.start+(b.time||'')).localeCompare(a.start+(a.time||''))
+                                : (a.start+(a.time||'')).localeCompare(b.start+(b.time||'')));
+  return rows;
+}
+function renderList(){
+  renderChips();
+  const rows = listRows();
+  const el = document.getElementById('listCount');
+  if (el) el.textContent = rows.length ? `${rows.length}건` : '';
+  document.getElementById('listWrap').innerHTML = rows.length
+    ? (isNarrow() ? cardsHTML(rows) : listTable(rows))
+    : '<div class="empty">해당하는 일정이 없습니다.</div>';
+}
+
+function toggleDone(id,v){ const e=DB.find(x=>x.id===id); if(e){ e.done=v; touch(e); save(); renderAll(); } }
+function clearDone(){
+  const n = DB.filter(e=>e.done).length;
+  if (!n){ toast('완료 표시된 일정이 없습니다'); return; }
+  if (!confirm(`완료 표시된 ${n}건을 삭제할까요?`)) return;
+  DB = DB.filter(e=>!e.done); save(); renderAll(); toast(n+'건 삭제');
+}
+
+/* ══════════════════════════════════════════════════
+   5. 편집 모달
+   ══════════════════════════════════════════════════ */
+let editId=null, editPick=-1, editPeople=[], modalKind='mine', modalUnit='person';
+const $ = id => document.getElementById(id);
+
+/* openEdit(일정id) 또는 openEdit(null, 후보번호) 또는 openEdit(null) = 새로 추가 */
+function openEdit(id, pickIdx){
+  editId = id;
+  editPick = (pickIdx == null) ? -1 : pickIdx;
+  const e = editPick >= 0 ? PICKED[editPick] : (id ? DB.find(x=>x.id===id) : null);
+  $('mTitle').textContent = editPick >= 0 ? '이 건만 고치기' : (e ? '일정 수정' : '일정 직접 추가');
+  $('mDel').style.display = (e && editPick < 0) ? '' : 'none';
+  $('m_title').value = e?e.title:'';
+  modalKind = e?(e.kind||'mine'):'mine';
+  $('m_cat').value   = e?e.cat:'기타';
+  $('m_start').value = e?e.start:todayStr();
+  $('m_end').value   = e?(e.end||e.start):todayStr();
+  $('m_time').value  = e?(e.time||''):'';
+  $('m_etime').value = e?(e.etime||''):'';
+  $('m_lead').value  = e?(e.lead==null?ROSTER.lead:e.lead):ROSTER.lead;
+  $('m_place').value = e?(e.place||''):'';
+  $('m_doc').value   = e?(e.doc||''):'';
+  $('m_memo').value  = e?(e.memo||''):'';
+  $('m_cOrg').value   = e?(e.cOrg||'')   : (LAST_CONTACT.org||'');
+  $('m_cName').value  = e?(e.cName||'')  : (LAST_CONTACT.name||'');
+  $('m_cTel').value   = e?(e.cTel||'')   : (LAST_CONTACT.tel||'');
+  $('m_cEmail').value = e?(e.cEmail||'') : (LAST_CONTACT.email||'');
+  modalUnit = (e && e.unit) ? e.unit : defaultUnit();
+  buildEditPeople(e ? (e.people||[]) : null);
+  syncModalKind();
+  $('mask').hidden = false;
+  setTimeout(()=>$('m_title').focus(),30);
+}
+
+function setKind(k){ modalKind = k; syncModalKind(); }
+
+/* 대상 목록 = 선택한 단위의 기본 대상 + 이 일정에 이미 들어있던 대상 */
+function buildEditPeople(cur){
+  const names = unitTargets(modalUnit).slice();
+  (cur||[]).forEach(p=>{ if (names.indexOf(p.n) < 0) names.push(p.n); });
+  editPeople = names.map(n => {
+    const f = (cur||[]).find(p=>p.n===n);
+    return { n, sel: cur ? !!f : true, ok: f ? f.ok : false };
+  });
+}
+function setUnit(u){
+  if (modalUnit === u) return;
+  modalUnit = u;
+  buildEditPeople(null);          /* 단위를 바꾸면 대상도 새로 잡는다 */
+  syncModalKind();
+}
+function pickAllPeople(v){ editPeople.forEach(p=>p.sel=v); syncModalKind(); }
+
+function syncModalKind(){
+  const collect = modalKind === 'collect';
+  $('kb_mine').className    = collect ? '' : 'on';
+  $('kb_collect').className = collect ? 'on' : '';
+  $('m_startLbl').textContent = collect ? '언제까지 내야 하나요' : '날짜';
+  $('collectBox').style.display = collect ? '' : 'none';
+  if (collect){
+    const due = dueOf({ kind:'collect', start:$('m_start').value||todayStr(), lead:+$('m_lead').value });
+    $('m_dueTxt').textContent = due ? `→ ${due}(${dowOf(due)})까지 받기` : '→ 앞당기지 않음';
+    const hasTeam = rosterTeams().length > 0;
+    $('unitSeg').style.display = hasTeam ? '' : 'none';
+    $('ub_team').className    = modalUnit==='team' ? 'on' : '';
+    $('ub_person').className  = modalUnit==='team' ? '' : 'on';
+    $('m_people').innerHTML = editPeople.length
+      ? editPeople.map((p,i)=>`<span class="pchip ${p.sel?'ok':''}" style="${p.sel?'':'opacity:.55'}" onclick="editPeople[${i}].sel=!editPeople[${i}].sel;syncModalKind()">${esc(p.n)}</span>`).join('')
+      : '<span style="color:var(--sub);font-size:12px">④ 명단·설정 탭에서 이름을 등록해두면 여기 자동으로 뜹니다.</span>';
+  }
+}
+
+function closeEdit(){ $('mask').hidden = true; editId = null; editPick = -1; }
+
+function saveEdit(){
+  if (!$('m_title').value.trim()){ toast('제목을 입력하세요'); return; }
+  if (!$('m_start').value){ toast('날짜를 입력하세요'); return; }
+  const kind = modalKind;
+  const data = {
+    title:$('m_title').value.trim(), kind, cat:$('m_cat').value,
+    start:$('m_start').value,
+    end:($('m_end').value && $('m_end').value >= $('m_start').value) ? $('m_end').value : $('m_start').value,
+    time:$('m_time').value, etime:$('m_etime').value,
+    lead: kind==='collect' ? (+$('m_lead').value||0) : 0,
+    unit: modalUnit,
+    people: kind==='collect' ? editPeople.filter(p=>p.sel).map(p=>({n:p.n, ok:p.ok})) : [],
+    place:$('m_place').value.trim(), doc:$('m_doc').value.trim(), memo:$('m_memo').value.trim(),
+    cOrg:$('m_cOrg').value.trim(), cName:$('m_cName').value.trim(),
+    cTel:$('m_cTel').value.trim(), cEmail:$('m_cEmail').value.trim()
+  };
+  if (editPick >= 0){                                  /* 등록 전 후보 수정 */
+    Object.assign(PICKED[editPick], data);
+    closeEdit(); renderPicked(); toast('고쳤습니다'); return;
+  }
+  if (editId) touch(Object.assign(DB.find(x=>x.id===editId), data));
+  else DB.push(touch({ id:uid(), done:false, src:'', created:todayStr(), ...data }));
+  save(); closeEdit(); renderAll(); toast('저장되었습니다');
+}
+function delFromModal(){
+  if (!editId || !confirm('이 일정을 삭제할까요?')) return;
+  DB = DB.filter(x=>x.id!==editId); save(); closeEdit(); renderAll(); toast('삭제되었습니다');
+}
+document.getElementById('mask').addEventListener('click', ev=>{ if(ev.target.id==='mask') closeEdit(); });
+document.addEventListener('keydown', ev=>{ if(ev.key==='Escape' && !$('mask').hidden) closeEdit(); });
+
+/* ══════════════════════════════════════════════════
+   6. 명단 · 백업
+   ══════════════════════════════════════════════════ */
+function saveRoster(){
+  ROSTER.groups = parseRoster(document.getElementById('rosterTxt').value);
+  ROSTER.names  = rosterNames();
+  ROSTER.lead = Math.max(0, Math.min(14, +document.getElementById('leadDefault').value||0));
+  ROSTER.skipWeekend = document.getElementById('skipWeekend').checked;
+  saveR(); renderAll();
+  const t = rosterTeams().length;
+  toast(t ? `${t}개 팀 · ${rosterNames().length}명 저장 (기본: 팀별 취합)`
+          : `${rosterNames().length}명 저장 (기본: 개인별 취합)`);
+}
+function wipeAll(){
+  if (!confirm('저장된 모든 일정을 삭제합니다. 계속할까요?')) return;
+  if (!confirm('되돌릴 수 없습니다. 정말 삭제할까요?')) return;
+  DB=[]; save(); renderAll(); toast('전체 삭제되었습니다');
+}
+/* 파일 내려받기 — 게시된 웹앱에서는 확인창을 거쳐 저장된다 */
+async function download(name, text, mime){
+  const body = '\uFEFF' + text;
+  try {
+    const dl = (window.claude && typeof claude.use === 'function') ? await claude.use('downloads') : null;
+    if (dl){ await dl.save({ filename:name, data:body }); toast('저장했습니다'); return; }
+  } catch(err){
+    if (err && err.code === 'declined') return;
+    toast('저장하지 못했습니다 — ' + ((err && err.message) || '잠시 후 다시'));
+    return;
+  }
+  const blob = new Blob([body], {type:(mime||'text/plain')+';charset=utf-8'});
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement('a'); a.href=url; a.download=name;
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(()=>URL.revokeObjectURL(url),1500);
+}
+function exportJSON(){
+  download(`공문일정_백업_${todayStr().replace(/-/g,'')}.json`,
+    JSON.stringify({ roster:ROSTER, events:DB }, null, 1), 'application/json');
+  toast('백업 파일을 저장했습니다');
+}
+function importJSON(input){
+  const f = input.files[0]; if(!f) return;
+  const r = new FileReader();
+  r.onload = () => {
+    try{
+      const raw = JSON.parse(String(r.result).replace(/^\uFEFF/,''));
+      const arr = Array.isArray(raw) ? raw : (raw.events||[]);
+      if (!Array.isArray(arr)) throw 0;
+      if (raw.roster) { Object.assign(ROSTER, raw.roster); saveR(); }
+      if (!confirm('확인 = 기존 일정에 합치기\n취소 = 기존 일정을 지우고 교체')) DB=[];
+      let add=0;
+      arr.forEach(e => {
+        if (!e || !e.start || !e.title) return;
+        if (DB.some(x=>x.start===e.start && x.time===(e.time||'') && x.title===e.title)) return;
+        DB.push({ id:uid(), done:false, end:e.start, time:'', etime:'', cat:'기타', kind:'mine',
+                  lead:0, people:[], place:'', doc:'', memo:'', src:'', created:todayStr(),
+                  cOrg:'', cName:'', cTel:'', cEmail:'', ...e, mt: e.mt || Date.now() });
+        add++;
+      });
+      save(); syncSettingsUI(); renderAll(); toast(add+'건 불러왔습니다');
+    }catch(err){ toast('백업 파일 형식이 올바르지 않습니다'); }
+    input.value='';
+  };
+  r.readAsText(f,'utf-8');
+}
+function icsStamp(d,t,plus){
+  if (!t){
+    const o=dateObj(d); o.setDate(o.getDate()+(plus?1:0));
+    return ';VALUE=DATE:'+ymd(o.getFullYear(),o.getMonth()+1,o.getDate()).replace(/-/g,'');
+  }
+  return ':'+d.replace(/-/g,'')+'T'+t.replace(':','')+'00';
+}
+const addHour = t => { const [h,m]=t.split(':').map(Number); return pad((h+1)%24)+':'+pad(m); };
+function exportICS(){
+  if (!DB.length){ toast('내보낼 일정이 없습니다'); return; }
+  const f = s => String(s).replace(/([,;\\])/g,'\\$1').replace(/\n/g,'\\n');
+  const contactLine = e => {
+    const w = [e.cOrg, e.cName].filter(Boolean).join(' ');
+    const p = [w && ('제출처 '+w), e.cTel && ('전화 '+e.cTel), e.cEmail].filter(Boolean).join(' / ');
+    return p ? '\n'+p : '';
+  };
+  const items = [];
+  DB.forEach(e => {
+    const endD = e.end||e.start;
+    items.push(['BEGIN:VEVENT','UID:'+e.id+'@gongmun','DTSTAMP:'+todayStr().replace(/-/g,'')+'T000000',
+      'DTSTART'+icsStamp(e.start,e.time,false),
+      'DTEND'+icsStamp(endD, e.time?(e.etime||addHour(e.time)):'', true),
+      'SUMMARY:'+f('['+e.cat+'] '+e.title),
+      e.place?'LOCATION:'+f(e.place):'',
+      'DESCRIPTION:'+f((e.kind==='collect'?'[취합] ':'')+(e.doc||'')+(e.memo?'\n'+e.memo:'')+contactLine(e)),
+      'END:VEVENT'].filter(Boolean).join('\r\n'));
+    const due = dueOf(e);
+    if (due) items.push(['BEGIN:VEVENT','UID:'+e.id+'-due@gongmun','DTSTAMP:'+todayStr().replace(/-/g,'')+'T000000',
+      'DTSTART'+icsStamp(due,'',false),'DTEND'+icsStamp(due,'',true),
+      'SUMMARY:'+f('[회신기한] '+e.title),
+      'DESCRIPTION:'+f('본 마감 '+e.start+' / 대상 '+(e.people||[]).map(p=>p.n).join(', ')+contactLine(e)),
+      'END:VEVENT'].join('\r\n'));
+  });
+  download(`공문일정_${todayStr().replace(/-/g,'')}.ics`,
+    'BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//gongmun//schedule//KO\r\nCALSCALE:GREGORIAN\r\n'+items.join('\r\n')+'\r\nEND:VCALENDAR',
+    'text/calendar');
+  toast('캘린더 파일을 저장했습니다 (회신기한 포함)');
+}
+
+
+/* ══════════════════════════════════════════════════
+   7. 초기화
+   ══════════════════════════════════════════════════ */
+function showTab(name){
+  document.querySelectorAll('.tab').forEach(b=>b.classList.toggle('active', b.dataset.tab===name));
+  ['in','cal','list','set'].forEach(n=>document.getElementById('tab-'+n).hidden = (n!==name));
+  if (name==='cal'){ renderCal(); renderUpcoming(); }
+  if (name==='list') renderList();
+  if (name==='set') syncSettingsUI();
+}
+document.querySelectorAll('.tab').forEach(b => b.onclick = () => showTab(b.dataset.tab));
+
+function syncSettingsUI(){
+  syncBar();
+  const sp = document.getElementById('syncPanel');
+  if (sp) sp.innerHTML = `
+    <div class="row" style="margin-bottom:10px">
+      <button class="ghost sm" onclick="showTab('list')">일정마다 <b>캘린더에 넣기</b></button>
+      <button class="ghost sm" onclick="exportJSON()">백업 저장</button>
+      <button class="ghost sm" onclick="document.getElementById('fileEl').click()">백업 불러오기</button>
+    </div>
+    <p class="hint" style="margin:0">
+      <b>구글 캘린더를 쓰면 가장 편합니다.</b> 일정 카드의 「캘린더에 넣기」를 누르면 본인 구글 계정에 들어가고,
+      폰과 PC는 구글이 알아서 맞춰줍니다. 취합 현황까지 통째로 옮길 때는 백업 파일을 쓰세요.
+    </p>`;
+  document.getElementById('rosterTxt').value = rosterText();
+  const t = rosterTeams(), n = rosterNames();
+  document.getElementById('rosterInfo').innerHTML = n.length
+    ? (t.length ? `팀 ${t.length}개(<b>${t.join(', ')}</b>) · 인원 ${n.length}명 — 취합 기본은 <b>팀별</b>입니다.`
+                : `인원 ${n.length}명 — 팀 구분이 없어 취합 기본은 <b>개인별</b>입니다.`)
+    : '아직 등록된 명단이 없습니다.';
+  document.getElementById('leadDefault').value = ROSTER.lead;
+  document.getElementById('skipWeekend').checked = !!ROSTER.skipWeekend;
+  document.getElementById('dbCount').textContent = DB.length;
+}
+function renderAll(){ renderCal(); renderUpcoming(); renderList(); syncSettingsUI(); }
+let rzT = null;
+window.addEventListener('resize', ()=>{ clearTimeout(rzT); rzT = setTimeout(()=>{ renderUpcoming(); renderList(); }, 200); });
+
+/* 다른 기기에서 고친 내용이 들어오면 화면을 다시 그린다 */
+function watchStore(){
+  const el = store(); if (!el || !window.MutationObserver) return;
+  new MutationObserver(()=>{
+    if (muteObs) return;
+    if (projectFromDOM()){ saveLocal(); renderAll(); }
+  }).observe(el, { childList:true, subtree:true, attributes:true });
+}
+
+function syncBar(){
+  const el = document.getElementById('syncBar');
+  if (!el) return;
+  el.hidden = false;
+  el.className = 'syncbar ' + (SYNC ? 'on' : 'off');
+  el.innerHTML = SYNC
+    ? '☁️ 이 주소로 접속하면 <b>폰과 PC 어디서나 같은 일정</b>이 보입니다.'
+    : '💾 일정은 이 기기에만 저장됩니다. 다른 기기로 옮기려면 <b>캘린더에 넣기</b>나 <b>백업 저장</b>을 쓰세요.';
+}
+
+(async function init(){
+  const opts = CATS.map(c=>`<option>${c}</option>`).join('');
+  document.getElementById('m_cat').innerHTML = opts;
+  try { SYNC = !!(window.claude && typeof claude.use === 'function' && await claude.use('artifact')); }
+  catch(e){ SYNC = false; }
+  if (SYNC){
+    /* 서버에 남아 있는 내용이 우선. 처음 열어 비어 있으면 이 기기 것을 올려 둔다 */
+    if (!projectFromDOM() && DB.length) commitToDOM();
+    watchStore();
+  }
+  syncBar();
+  renderAll();
+})();
+</script>
+</body>
+</html>
