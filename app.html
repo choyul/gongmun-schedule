@@ -248,11 +248,11 @@
 
       <div class="grabs">
         <button class="grab" onclick="document.getElementById('camIn').click()">📷 사진으로 담기
-          <small>공문을 찍거나 앨범에서 고르기</small></button>
+          <small>카메라 · 앨범 중에 고릅니다</small></button>
         <button class="grab" onclick="document.getElementById('anyFile').click()">📄 파일로 담기
           <small>한글 · PDF · 엑셀</small></button>
       </div>
-      <input type="file" id="camIn" hidden accept="image/*" capture="environment"
+      <input type="file" id="camIn" hidden accept="image/*"
              onchange="handleFiles(this.files);this.value=''">
 
       <div class="drop" id="drop" onclick="document.getElementById('anyFile').click()">
