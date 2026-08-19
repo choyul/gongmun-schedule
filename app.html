@@ -226,7 +226,6 @@
   <button class="sm" onclick="exportJSON()">백업 저장</button>
   <button class="sm" onclick="document.getElementById('fileEl').click()">백업 불러오기</button>
   <button class="sm" onclick="exportICS()">ICS 내보내기</button>
-  <button class="sm" onclick="window.print()">인쇄</button>
   <input type="file" id="fileEl" accept=".json" hidden onchange="importJSON(this)">
 </header>
 
@@ -295,6 +294,7 @@
         <button class="ghost sm" onclick="moveMonth(1)">다음 ▶</button>
         <button class="ghost sm" onclick="goToday()">오늘</button>
         <span style="flex:1"></span>
+        <button class="ghost sm noprint" onclick="window.print()">🖨 이 달 인쇄</button>
         <button class="primary sm noprint" onclick="openEdit(null)">+ 직접 추가</button>
       </div>
       <table class="cal"><thead><tr>
@@ -1432,6 +1432,44 @@ async function pdfToText(bytes){
   return text.replace(/[ \t]+\n/g,'\n').replace(/\n{3,}/g,'\n\n').trim();
 }
 
+
+/* ══════════════════════════════════════════════════
+   1-F. 사진 속 글자 읽기
+   인터넷 주소로 열었을 때만 됩니다. 인식기는 처음 한 번만 내려받아 저장됩니다.
+   ══════════════════════════════════════════════════ */
+let OCRLIB = null;
+async function ensureOCR(){
+  if (OCRLIB) return OCRLIB;
+  if (window.Tesseract) return (OCRLIB = window.Tesseract);
+  await new Promise((res, rej) => {
+    const el = document.createElement('script');
+    el.src = 'ocr/tesseract.min.js';
+    el.onload = res;
+    el.onerror = () => rej(new Error('인식기를 찾을 수 없습니다'));
+    document.head.appendChild(el);
+  });
+  if (!window.Tesseract) throw new Error('인식기를 불러오지 못했습니다');
+  return (OCRLIB = window.Tesseract);
+}
+
+async function ocrImage(file){
+  const T = await ensureOCR();
+  /* 작업자 안에서는 상대 경로가 통하지 않아 전체 주소로 준다 */
+  const base = new URL('ocr/', location.href).href;
+  const worker = await T.createWorker(['kor','eng'], 1, {
+    workerPath: base + 'worker.min.js',
+    corePath: base,
+    langPath: base,
+    gzip: false,
+    logger: m => {
+      if (m.status === 'recognizing text') setSrcInfo('사진에서 글자 읽는 중… ' + Math.round((m.progress||0)*100) + '%');
+      else if (/load|initial/i.test(m.status||'')) setSrcInfo('글자 인식기 준비 중…');
+    }
+  });
+  try { return (await worker.recognize(file)).data.text || ''; }
+  finally { worker.terminate(); }
+}
+
 /* ══════════════════════════════════════════════════
    1-D. 파일 읽기 (PDF / 엑셀 / CSV / 텍스트 / 이미지)
    ══════════════════════════════════════════════════ */
@@ -1711,18 +1749,25 @@ function showImage(file){
   const url = URL.createObjectURL(file);
   document.getElementById('imgWrap').innerHTML = `
     <div class="imgbox">
-      <div class="cap"><b>불러온 이미지</b> ${esc(file.name||'붙여넣은 캡쳐')}
+      <div class="cap"><b>불러온 사진</b> ${esc(file.name||'붙여넣은 캡쳐')}
         <button class="ghost sm" onclick="document.getElementById('imgWrap').innerHTML=''">닫기</button></div>
       <img src="${url}" onclick="window.open(this.src)">
     </div>
+    <div id="imgNote"></div>`;
+}
+
+/* 글자를 못 읽었을 때만 우회 방법을 안내한다 */
+function showImgHelp(why){
+  const el = document.getElementById('imgNote');
+  if (!el) return;
+  el.innerHTML = `
     <div class="warnbox">
-      <b>이미지 속 글자는 이 도구가 직접 읽지 못합니다.</b> 인터넷이 끊긴 PC에서 쓰는 단일 파일이라 글자 인식 기능을 넣을 수 없습니다. 대신 아래 방법이 훨씬 빠르고 정확합니다.<br>
-      · <b>윈도우 11</b> — 캡처도구로 찍은 뒤 <b>[텍스트 조치] → [모든 텍스트 복사]</b> 후 아래 칸에 붙여넣기<br>
-      · <b>한글·엑셀·메일 화면이라면</b> 캡쳐하지 말고 원본에서 <b>Ctrl+A → Ctrl+C</b> 로 복사해 붙여넣기<br>
-      · 그래도 어려우면 이미지를 보면서 아래 칸에 날짜와 제목만 적어도 인식합니다 (예: <code>8. 20.(목) 실적보고서 제출</code>)
+      <b>${esc(why)}</b> 글씨가 작거나 비뚤어졌거나, 손글씨이거나, 인터넷이 끊긴 상태일 수 있습니다.<br>
+      · <b>다시 찍어보기</b> — 공문이 화면에 꽉 차게, 반듯하게, 밝은 곳에서<br>
+      · <b>폰이라면</b> 아래 입력칸을 길게 눌러 <b>「텍스트 스캔」</b> — 폰에 들어 있는 인식 기능이 더 정확할 때가 많습니다<br>
+      · <b>원본이 있다면</b> 한글·PDF 파일을 그대로 올리는 쪽이 가장 정확합니다<br>
+      · 그래도 어려우면 날짜와 제목만 적어도 됩니다 (예: <code>8. 20.(목) 실적보고서 제출</code>)
     </div>`;
-  setSrcInfo('');
-  document.getElementById('raw').focus();
 }
 
 async function handleFiles(files){
@@ -1730,7 +1775,26 @@ async function handleFiles(files){
   if (!f) return;
   const name = (f.name||'').toLowerCase();
   try{
-    if ((f.type||'').indexOf('image/') === 0){ showImage(f); return; }
+    if ((f.type||'').indexOf('image/') === 0){
+      showImage(f);
+      setSrcInfo('사진에서 글자 읽는 중…');
+      try {
+        const txt = await ocrImage(f);
+        if (txt && (txt.match(/[가-힣0-9]/g)||[]).length >= 8){
+          document.getElementById('raw').value = txt;
+          setSrcInfo('사진에서 글자를 읽었습니다 — 틀린 글자가 있는지 확인하세요');
+          document.getElementById('imgNote').innerHTML = '';
+          runParse();
+          return;
+        }
+        setSrcInfo('');
+        showImgHelp('사진에서 글자를 찾지 못했습니다.');
+      } catch(err){
+        setSrcInfo('');
+        showImgHelp('이 화면에서는 사진 속 글자를 읽을 수 없습니다.');
+      }
+      return;
+    }
     if (/\.pdf$/.test(name)){
       setSrcInfo('PDF에서 글자를 뽑는 중…');
       const txt = await pdfToText(new Uint8Array(await f.arrayBuffer()));
