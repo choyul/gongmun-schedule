@@ -249,7 +249,7 @@
         <button class="grab" onclick="document.getElementById('camIn').click()">📷 사진으로 담기
           <small>카메라 · 앨범 중에 고릅니다</small></button>
         <button class="grab" onclick="document.getElementById('anyFile').click()">📄 파일로 담기
-          <small>한글 · PDF · 엑셀</small></button>
+          <small>한글 · PDF · 엑셀 · 텍스트</small></button>
       </div>
       <input type="file" id="camIn" hidden accept="image/*"
              onchange="handleFiles(this.files);this.value=''">
@@ -258,7 +258,7 @@
         📄 여기에 <b>파일을 끌어다 놓거나</b> 클릭해서 고르세요
         <div style="font-size:12px;margin-top:5px">한글(.hwp·.hwpx) · PDF · 엑셀(.xlsx) · CSV · 텍스트 · 사진</div>
       </div>
-      <input type="file" id="anyFile" hidden accept=".hwp,.hwpx,.pdf,.xlsx,.xlsm,.xls,.csv,.tsv,.txt,.md,image/*" onchange="handleFiles(this.files);this.value=''">
+      <input type="file" id="anyFile" hidden  onchange="handleFiles(this.files);this.value=''">
 
       <div id="imgWrap"></div>
       <div id="srcInfo"></div>
@@ -1861,11 +1861,14 @@ async function handleFiles(files){
       document.getElementById('raw').value = rows.map(r=>r.join('\t')).join('\n');
       setSrcInfo(`「${f.name}」 ${rows.length}행을 읽었습니다`);
       runParse();
-    } else {
+    } else if (/\.(txt|md|log|tsv|json|htm|html|eml|rtf)$/.test(name) || name.indexOf('.') < 0){
       const txt = await readTextFile(f);
       document.getElementById('raw').value = txt;
       setSrcInfo(`「${f.name}」 을 읽었습니다`);
       runParse();
+    } else {
+      setSrcInfo('');
+      toast('이 형식은 읽지 못합니다 — 한글·PDF·엑셀·사진·텍스트를 넣어주세요');
     }
   } catch(err){
     setSrcInfo('');
