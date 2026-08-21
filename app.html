@@ -279,6 +279,7 @@
       <div class="commitbar">
         <button class="ghost sm" onclick="toggleAll(true)">전체 선택</button>
         <button class="ghost sm" onclick="toggleAll(false)">전체 해제</button>
+        <button class="ghost sm" onclick="mailFromPicked()">📧 제출 요청 메일</button>
         <span style="flex:1"></span>
         <button class="ok big" id="commitBtn" onclick="commitPicked()">일정표에 등록 →</button>
       </div>
@@ -346,7 +347,17 @@
       </p>
       <textarea id="rosterTxt" style="min-height:150px" placeholder="도시계획팀: 김철수, 이영희&#10;도시재생팀: 박민수, 최지훈&#10;건축팀: 정수연"></textarea>
       <div id="rosterInfo" style="font-size:12.5px;color:var(--sub);margin-top:7px"></div>
-      <div class="row" style="margin-top:12px">
+      <div class="row" style="margin-top:14px">
+        <div class="field" style="flex:1;min-width:120px"><label>내 소속</label>
+          <input id="meDept" placeholder="예) 도시계획과"></div>
+        <div class="field" style="flex:.7;min-width:90px"><label>내 이름</label>
+          <input id="meName" placeholder="예) 조율"></div>
+        <div class="field" style="flex:1;min-width:120px"><label>내 연락처</label>
+          <input id="meTel" placeholder="예) 054-679-6220"></div>
+      </div>
+      <p class="hint" style="margin:6px 0 0">제출 요청 메일을 쓸 때 <b>보내는 사람</b>으로 들어갑니다. 비워두셔도 됩니다.</p>
+
+      <div class="row" style="margin-top:14px">
         <div class="field">
           <label>회신기한 = 마감일 <b>며칠 전</b></label>
           <input type="number" id="leadDefault" min="0" max="14" style="width:90px">
@@ -377,6 +388,24 @@
       <p class="hint" style="margin:12px 0 0">현재 저장된 일정: <b id="dbCount"></b>건</p>
     </div>
   </section>
+</div>
+
+<!-- 제출 요청 메일 -->
+<div class="mask" id="mailMask" hidden>
+  <div class="modal">
+    <h3>제출 요청 메일</h3>
+    <p class="hint" style="margin:-6px 0 12px">공문에서 뽑은 내용으로 초안을 썼습니다. 고쳐서 쓰세요.</p>
+    <div class="field"><label>제목</label><input id="mail_subject"></div>
+    <div class="field"><label>내용</label>
+      <textarea id="mail_body" style="min-height:290px;font-size:13.5px;line-height:1.75"></textarea></div>
+    <div class="row" style="margin-top:12px">
+      <button class="primary" onclick="mailCopy()">복사하기</button>
+      <button class="ghost" onclick="mailOpen()">메일 앱 열기</button>
+      <button class="ghost" onclick="mailShare()">공유</button>
+      <span style="flex:1"></span>
+      <button class="ghost" onclick="closeMail()">닫기</button>
+    </div>
+  </div>
 </div>
 
 <!-- 편집 모달 -->
@@ -2164,7 +2193,8 @@ function listTable(rows){
         ${contactHTML(e)}</td>
       <td>${due?`<div style="font-size:12px;color:var(--warn);font-weight:700;margin-bottom:3px">📥 ${esc(due)}(${dowOf(due)}) ${ddayHTML(due)}</div>`:''}
           ${e.kind==='collect'?peopleHTML(e):'<span style="color:var(--sub)">—</span>'}</td>
-      <td class="noprint"><button class="ghost sm" onclick="openEdit('${e.id}')">수정</button></td>
+      <td class="noprint"><button class="ghost sm" onclick="openEdit('${e.id}')">수정</button>
+        ${e.kind==='collect'?`<button class="ghost sm" style="margin-top:3px" onclick="openMail([DB.find(x=>x.id==='${e.id}')])">메일</button>`:''}</td>
     </tr>`;
   }).join('') + '</tbody></table></div>';
 }
@@ -2274,6 +2304,7 @@ function cardsHTML(rows){
         <button class="cal" onclick="toGCal('${e.id}',false)">캘린더에 넣기</button>
         ${due?`<button class="cal" onclick="toGCal('${e.id}',true)">회신기한도</button>`:''}
         <button class="shr" onclick="shareOne('${e.id}')">공유</button>
+        ${e.kind==='collect'?`<button class="shr" onclick="openMail([DB.find(x=>x.id==='${e.id}')])">메일</button>`:''}
         <button onclick="openEdit('${e.id}')">수정</button>
         <button onclick="toggleDone('${e.id}',${!e.done})">${e.done?'완료 해제':'완료'}</button>
       </div>
@@ -2311,6 +2342,105 @@ function clearDone(){
   if (!n){ toast('완료 표시된 일정이 없습니다'); return; }
   if (!confirm(`완료 표시된 ${n}건을 삭제할까요?`)) return;
   DB = DB.filter(e=>!e.done); save(); renderAll(); toast(n+'건 삭제');
+}
+
+
+/* ══════════════════════════════════════════════════
+   4-C. 제출 요청 메일 초안
+   공문에서 뽑은 내용으로 부서원에게 보낼 메일을 대신 써 준다.
+   ══════════════════════════════════════════════════ */
+const dotDay = d => `${+d.slice(5,7)}. ${+d.slice(8,10)}.(${dowOf(d)})`;
+
+function mailDraft(list){
+  const me = ROSTER.me || {};
+  const from = [me.dept, me.name].filter(Boolean).join(' ');
+  const one = list.length === 1 ? list[0] : null;
+
+  /* 받는 쪽 호칭 — 대상이 팀이면 팀장님, 사람이면 이름 */
+  const who = [];
+  list.forEach(e => (e.people||[]).forEach(p => { if (who.indexOf(p.n) < 0) who.push(p.n); }));
+  const isTeam = who.length && (list[0].unit === 'team');
+  const greet = who.length
+    ? (isTeam ? who.join(', ') + ' 담당자님께' : who.join(', ') + ' 주무관님께')
+    : '팀장님께';
+
+  /* 줄에서 뽑은 조각보다 공문 제목이 건명으로 알맞다 */
+  const subjOf = e => (e.doc && e.doc !== e.title && e.doc.length >= e.title.length) ? e.doc : e.title;
+
+  /* 한 공문에서 여러 건이 나왔으면 공문 제목은 위에 한 번만 적는다 */
+  const sameDoc = (list.length > 1 && list[0].doc && list.every(e => e.doc === list[0].doc)) ? list[0].doc : '';
+
+  const item = e => {
+    const due = dueOf(e);
+    const rows = [];
+    if (!one && !sameDoc) rows.push(`  ○ 건명: ${subjOf(e)}`);
+    if (one) rows.push(`  ○ 건명: ${subjOf(e)}`);
+    rows.push(`  ○ 제출기한: ${dotDay(e.start)}${e.time ? ' ' + e.time : ''}`);
+    if (due) rows.push(`  ○ 우리 과 취합기한: ${dotDay(due)}`);
+    const to = [e.cOrg, e.cName].filter(Boolean).join(' ');
+    if (to || e.cTel) rows.push(`  ○ 제출처: ${to}${e.cTel ? ' (' + e.cTel + ')' : ''}`);
+    if (e.place) rows.push(`  ○ 장소: ${e.place}`);
+    return rows.join('\n');
+  };
+
+  const firstDue = list.map(dueOf).filter(Boolean).sort()[0];
+  const body = [
+    greet, '',
+    (from ? from : '서무') + '입니다.',
+    list.length === 1
+      ? '아래와 같이 자료 제출 요청이 있어 안내드립니다.'
+      : `아래 ${list.length}건의 자료 제출 요청이 있어 안내드립니다.`,
+    sameDoc ? `\n  ○ 관련 공문: ${sameDoc}` : '',
+    '',
+    list.map((e, i) => (list.length > 1 ? `${i+1}. ${sameDoc ? e.title : subjOf(e)}\n` : '') + item(e)).join('\n\n'),
+    '',
+    firstDue
+      ? `바쁘시겠지만 ${dotDay(firstDue)}까지 회신하여 주시면 취합하여 제출하겠습니다.`
+      : '기한 내 제출하여 주시기 바랍니다.',
+    '문의 사항은 언제든 연락 주시기 바랍니다.',
+    '', '감사합니다.', '',
+    [from, me.tel].filter(Boolean).join('\n')
+  ].filter(x => x !== null).join('\n').replace(/\n{3,}/g, '\n\n').trim();
+
+  const when = one ? dotDay(dueOf(one) || one.start) : dotDay(firstDue || list[0].start);
+  const subject = one
+    ? `[제출요청] ${subjOf(one)} (${when}까지)`
+    : `[제출요청] 자료 ${list.length}건 (${when}까지)`;
+
+  return { subject, body };
+}
+
+function openMail(list){
+  if (!list || !list.length){ toast('메일로 만들 일정이 없습니다'); return; }
+  const d = mailDraft(list);
+  document.getElementById('mail_subject').value = d.subject;
+  document.getElementById('mail_body').value = d.body;
+  document.getElementById('mailMask').hidden = false;
+}
+function closeMail(){ document.getElementById('mailMask').hidden = true; }
+
+const mailAll = () => document.getElementById('mail_subject').value + '\n\n' + document.getElementById('mail_body').value;
+function mailCopy(){ copyText(mailAll(), '메일 내용을 복사했습니다 — 붙여넣어 보내세요'); }
+function mailOpen(){
+  const u = 'mailto:?subject=' + encodeURIComponent(document.getElementById('mail_subject').value)
+          + '&body=' + encodeURIComponent(document.getElementById('mail_body').value);
+  const w = window.open(u, '_blank');
+  if (!w) location.href = u;
+}
+function mailShare(){
+  const t = document.getElementById('mail_subject').value;
+  if (navigator.share){
+    navigator.share({ title:t, text: document.getElementById('mail_body').value }).catch(()=>{});
+    return;
+  }
+  mailCopy();
+}
+
+/* 등록 전 후보에서 — 체크된 것 중 받아야 하는 건을 모은다 */
+function mailFromPicked(){
+  const on = PICKED.filter(e => e.on);
+  const list = on.filter(e => e.kind === 'collect');
+  openMail(list.length ? list : on);
 }
 
 /* ══════════════════════════════════════════════════
@@ -2417,7 +2547,12 @@ function delFromModal(){
   DB = DB.filter(x=>x.id!==editId); save(); closeEdit(); renderAll(); toast('삭제되었습니다');
 }
 document.getElementById('mask').addEventListener('click', ev=>{ if(ev.target.id==='mask') closeEdit(); });
-document.addEventListener('keydown', ev=>{ if(ev.key==='Escape' && !$('mask').hidden) closeEdit(); });
+document.getElementById('mailMask').addEventListener('click', ev=>{ if(ev.target.id==='mailMask') closeMail(); });
+document.addEventListener('keydown', ev=>{
+  if (ev.key!=='Escape') return;
+  if (!document.getElementById('mailMask').hidden) closeMail();
+  else if (!$('mask').hidden) closeEdit();
+});
 
 /* ══════════════════════════════════════════════════
    6. 명단 · 백업
@@ -2427,6 +2562,9 @@ function saveRoster(){
   ROSTER.names  = rosterNames();
   ROSTER.lead = Math.max(0, Math.min(14, +document.getElementById('leadDefault').value||0));
   ROSTER.skipWeekend = document.getElementById('skipWeekend').checked;
+  ROSTER.me = { dept:document.getElementById('meDept').value.trim(),
+                name:document.getElementById('meName').value.trim(),
+                tel:document.getElementById('meTel').value.trim() };
   saveR(); renderAll();
   const t = rosterTeams().length;
   toast(t ? `${t}개 팀 · ${rosterNames().length}명 저장 (기본: 팀별 취합)`
@@ -2557,6 +2695,10 @@ function syncSettingsUI(){
     : '아직 등록된 명단이 없습니다.';
   document.getElementById('leadDefault').value = ROSTER.lead;
   document.getElementById('skipWeekend').checked = !!ROSTER.skipWeekend;
+  const me = ROSTER.me || {};
+  document.getElementById('meDept').value = me.dept || '';
+  document.getElementById('meName').value = me.name || '';
+  document.getElementById('meTel').value  = me.tel  || '';
   document.getElementById('dbCount').textContent = DB.length;
 }
 function renderAll(){ renderCal(); renderUpcoming(); renderList(); syncSettingsUI(); }
