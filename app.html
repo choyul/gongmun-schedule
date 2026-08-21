@@ -1878,17 +1878,44 @@ async function handleFiles(files){
 
 /* 드래그&드롭 · 이미지 붙여넣기 */
 (function bindInput(){
-  const dz = document.getElementById('drop');
-  ['dragenter','dragover'].forEach(t => document.addEventListener(t, e=>{
-    if (!e.dataTransfer || document.getElementById('tab-in').hidden) return;
-    e.preventDefault(); dz.classList.add('on');
-  }));
-  ['dragleave','drop'].forEach(t => document.addEventListener(t, e=>{
-    if (t==='drop' && e.dataTransfer && !document.getElementById('tab-in').hidden){
-      e.preventDefault(); handleFiles(e.dataTransfer.files);
+  const dz = () => document.getElementById('drop');
+  const onTab = () => !document.getElementById('tab-in').hidden;
+  const glow = on => { const d = dz(); if (d) d.classList.toggle('on', !!on); };
+
+  const over = e => {
+    if (!e.dataTransfer || !onTab()) return;
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'copy';
+    glow(true);
+  };
+  const leave = () => glow(false);
+
+  function onDrop(e){
+    if (!e.dataTransfer || !onTab()) return;
+    e.preventDefault();
+    glow(false);
+    const dt = e.dataTransfer;
+
+    if (dt.files && dt.files.length){ handleFiles(dt.files); return; }
+
+    /* 글자를 끌어다 놓은 경우도 받아준다 */
+    let txt = '';
+    try { txt = dt.getData('text/plain') || dt.getData('text') || ''; } catch(err){}
+    if (txt && txt.trim().length > 10){
+      document.getElementById('raw').value = txt;
+      setSrcInfo('끌어다 놓은 내용');
+      runParse();
+      return;
     }
-    dz.classList.remove('on');
-  }));
+
+    /* 메일·압축 프로그램에서 바로 끌면 파일이 안 실려 온다 */
+    toast('파일이 넘어오지 않았습니다 — 바탕화면에 저장한 뒤 다시 끌거나, 눌러서 고르세요');
+  }
+
+  ['dragenter','dragover'].forEach(t => document.addEventListener(t, over));
+  ['dragleave','dragend'].forEach(t => document.addEventListener(t, leave));
+  document.addEventListener('drop', onDrop);
+
   document.addEventListener('paste', e=>{
     if (document.getElementById('tab-in').hidden || !e.clipboardData) return;
     const items = e.clipboardData.items || [];
